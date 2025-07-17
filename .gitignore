@@ -1,0 +1,78 @@
+# Zephyr/Nordic Connect SDK .gitignore
+
+# Build directories
+build/
+build_*/
+
+# Log files
+*.log
+screenlog.*
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*~
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# C/C++ objects and libraries
+*.o
+*.a
+*.so
+*.dll
+*.exe
+
+# Debug files
+*.elf
+*.map
+*.hex
+*.bin
+
+# System files
+.fuse_hidden*
+.nfs*
+
+# Documentation build
+docs/_build/
+doc/_build/
+
+# Test results
+test-results/
+*.xml
+
+# Coverage reports
+coverage/
+*.gcov
+*.gcda
+*.gcno
+
+# Certificates and private keys (security)
+*.pem
+*.key
+*.crt
+*.p12
+certificates/
+keys/
+
+# Local configuration files
+local_config.conf
+local_overlay.conf 
