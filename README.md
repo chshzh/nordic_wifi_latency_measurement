@@ -207,6 +207,19 @@ wifi_udp_latency/
 └── sample.yaml            # Sample metadata
 ```
 
+## 📖 Documentation
+
+### [Wi-Fi Raw TX and UDP Packet Latency Comparison](wifi_raw_and_udp_packets_latency_comparison.md)
+
+Comprehensive analysis document covering:
+- **Transmission path comparisons** between Raw TX and UDP approaches
+- **SoftAP mode considerations** for both Raw TX and UDP scenarios  
+- **Performance benchmarks** with detailed latency measurements
+- **Use case recommendations** for choosing the optimal approach
+- **Implementation examples** for different network configurations
+
+This document provides the theoretical foundation and practical guidance for understanding when to use Raw TX vs UDP transmission methods. It complements this project by explaining the latency differences and trade-offs between the two approaches.
+
 ## 🤝 Contributing
 
 We welcome contributions! Please follow these steps:
