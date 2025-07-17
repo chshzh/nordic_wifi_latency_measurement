@@ -1,0 +1,84 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        config:
+          - overlay-tx.conf
+          - overlay-rx.conf 
+          - overlay-rx-softap.conf
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        path: wifi_udp_latency
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build gperf ccache dfu-util device-tree-compiler wget
+        pip3 install --user -U west
+
+    - name: Initialize west workspace
+      run: |
+        west init --mr v3.0.2 ncs
+        cd ncs
+        west update
+        west zephyr-export
+
+    - name: Copy project to workspace
+      run: |
+        cp -r wifi_udp_latency ncs/
+
+    - name: Build project
+      run: |
+        cd ncs/wifi_udp_latency
+        source ../zephyr/zephyr-env.sh
+        west build -p auto -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=${{ matrix.config }}
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: build-${{ matrix.config }}
+        path: ncs/wifi_udp_latency/build/
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Validate README
+      run: |
+        # Check if README has required sections
+        grep -q "## Overview" README.md || (echo "Missing Overview section" && exit 1)
+        grep -q "## Hardware Requirements" README.md || (echo "Missing Hardware Requirements section" && exit 1)
+        grep -q "## Quick Start" README.md || (echo "Missing Quick Start section" && exit 1)
+        echo "README validation passed"
+
+    - name: Check license headers
+      run: |
+        # Check that source files have proper license headers
+        find src/ -name "*.c" -exec grep -l "SPDX-License-Identifier: LicenseRef-Nordic-5-Clause" {} \; | wc -l > /tmp/licensed_files
+        find src/ -name "*.c" | wc -l > /tmp/total_files
+        if [ "$(cat /tmp/licensed_files)" -ne "$(cat /tmp/total_files)" ]; then
+          echo "Some C files missing license headers"
+          exit 1
+        fi
+        echo "License header validation passed" 
