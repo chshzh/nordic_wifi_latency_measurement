@@ -1,4 +1,4 @@
-# Wi-Fi UDP Latency Test Application
+# Wi-Fi UDP Packet Latency Test Application
 
 ![Nordic Semiconductor](https://img.shields.io/badge/Nordic%20Semiconductor-nRF7002-blue)
 ![NCS Version](https://img.shields.io/badge/NCS-v3.0.2+-green)
@@ -73,8 +73,8 @@ source $ZEPHYR_BASE/zephyr-env.sh
 
 ```bash
 # Clone the project (adjust URL to your GitHub repository)
-git clone https://github.com/yourusername/wifi_udp_latency.git
-cd wifi_udp_latency
+git clone https://github.com/yourusername/wifi_udp_packet_latency.git
+cd wifi_udp_packet_latency
 
 # Build for Test 1 - TX Device (External AP)
 west build -p auto -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=overlay-tx.conf
@@ -106,25 +106,25 @@ Update your Wi-Fi credentials in `overlay-tx.conf` and `overlay-rx.conf`:
 ```conf
 CONFIG_WIFI_CREDENTIALS_STATIC_SSID="YourWiFiSSID"
 CONFIG_WIFI_CREDENTIALS_STATIC_PASSWORD="YourWiFiPassword"
-CONFIG_WIFI_UDP_LATENCY_TARGET_IP="192.168.1.100"  # RX device IP
+CONFIG_WIFI_UDP_PACKET_LATENCY_TARGET_IP="192.168.1.100"  # RX device IP
 ```
 
 #### For Test 2 (SoftAP)
 Default SoftAP configuration in `overlay-rx-softap.conf`:
 
 ```conf
-CONFIG_WIFI_UDP_LATENCY_SOFTAP_SSID="wifi-latency-test"
-CONFIG_WIFI_UDP_LATENCY_SOFTAP_PSK="testpass123"
-# TX device should target: CONFIG_WIFI_UDP_LATENCY_TARGET_IP="192.168.1.1"
+CONFIG_WIFI_UDP_PACKET_LATENCY_SOFTAP_SSID="wifi-latency-test"
+CONFIG_WIFI_UDP_PACKET_LATENCY_SOFTAP_PSK="testpass123"
+# TX device should target: CONFIG_WIFI_UDP_PACKET_LATENCY_TARGET_IP="192.168.1.1"
 ```
 
 ### Test Parameters
 
 | Parameter | Config Option | Default | Description |
 |-----------|---------------|---------|-------------|
-| UDP Port | `CONFIG_WIFI_UDP_LATENCY_UDP_PORT` | 12345 | Communication port |
-| Test Duration | `CONFIG_WIFI_UDP_LATENCY_TEST_DURATION_MS` | 10000 | Test length in ms |
-| Packet Interval | `CONFIG_WIFI_UDP_LATENCY_PACKET_INTERVAL_MS` | 1000 | TX interval in ms |
+| UDP Port | `CONFIG_WIFI_UDP_PACKET_LATENCY_UDP_PORT` | 12345 | Communication port |
+| Test Duration | `CONFIG_WIFI_UDP_PACKET_LATENCY_TEST_DURATION_MS` | 10000 | Test length in ms |
+| Packet Interval | `CONFIG_WIFI_UDP_PACKET_LATENCY_PACKET_INTERVAL_MS` | 1000 | TX interval in ms |
 
 ## 📏 Measurement Setup
 
@@ -192,7 +192,7 @@ west --version
 ## 🏗️ Project Structure
 
 ```
-wifi_udp_latency/
+wifi_udp_packet_latency/
 ├── src/
 │   ├── main.c              # Main application logic
 │   ├── wifi_utils.c/.h     # Wi-Fi management
@@ -245,8 +245,8 @@ SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/wifi_udp_latency/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/wifi_udp_latency/discussions)
+- **Issues**: [GitHub Issues](https://github.com/yourusername/wifi_udp_packet_latency/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/wifi_udp_packet_latency/discussions)
 - **Nordic DevZone**: [devzone.nordicsemi.com](https://devzone.nordicsemi.com/)
 - **Documentation**: [nRF Connect SDK Documentation](https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/index.html)
 

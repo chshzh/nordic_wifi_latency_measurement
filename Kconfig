@@ -4,78 +4,78 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
-config WIFI_UDP_LATENCY_UDP_PORT
+config WIFI_UDP_PACKET_LATENCY_UDP_PORT
 	int "UDP port for communication"
 	default 12345
 	help
 	  Port number used for UDP communication between devices
 
-config WIFI_UDP_LATENCY_TEST_DURATION_MS
+config WIFI_UDP_PACKET_LATENCY_TEST_DURATION_MS
 	int "Test duration in milliseconds"
 	default 10000
 	help
 	  Duration of the test in milliseconds
 
-config WIFI_UDP_LATENCY_PACKET_INTERVAL_MS
+config WIFI_UDP_PACKET_LATENCY_PACKET_INTERVAL_MS
 	int "Packet transmission interval in milliseconds"
 	default 1000
 	help
 	  Interval between packet transmissions in milliseconds
 
-choice WIFI_UDP_LATENCY_DEVICE_ROLE
+choice WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE
 	prompt "Device role"
-	default WIFI_UDP_LATENCY_DEVICE_ROLE_TX
+	default WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_TX
 	help
 	  Select the role of this device in the test
 
-config WIFI_UDP_LATENCY_DEVICE_ROLE_TX
+config WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_TX
 	bool "UDP TX device"
 	help
 	  This device will transmit UDP packets
 
-config WIFI_UDP_LATENCY_DEVICE_ROLE_RX
+config WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX
 	bool "UDP RX device"
 	help
 	  This device will receive UDP packets
 
 endchoice
 
-choice WIFI_UDP_LATENCY_TEST_MODE
+choice WIFI_UDP_PACKET_LATENCY_TEST_MODE
 	prompt "Test mode"
-	default WIFI_UDP_LATENCY_TEST_MODE_AP
+	default WIFI_UDP_PACKET_LATENCY_TEST_MODE_AP
 	help
 	  Select the test mode
 
-config WIFI_UDP_LATENCY_TEST_MODE_AP
+config WIFI_UDP_PACKET_LATENCY_TEST_MODE_AP
 	bool "Both devices connect to external AP"
 	help
 	  Test 1: Both devices connect to an external access point
 
-config WIFI_UDP_LATENCY_TEST_MODE_SOFTAP
+config WIFI_UDP_PACKET_LATENCY_TEST_MODE_SOFTAP
 	bool "RX device as SoftAP"
 	help
 	  Test 2: RX device acts as SoftAP, TX device connects to it
 
 endchoice
 
-config WIFI_UDP_LATENCY_TARGET_IP
+config WIFI_UDP_PACKET_LATENCY_TARGET_IP
 	string "Target IP address for UDP TX device"
 	default "192.168.1.100"
-	depends on WIFI_UDP_LATENCY_DEVICE_ROLE_TX
+	depends on WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_TX
 	help
 	  IP address of the UDP RX device
 
-config WIFI_UDP_LATENCY_SOFTAP_SSID
+config WIFI_UDP_PACKET_LATENCY_SOFTAP_SSID
 	string "SoftAP SSID"
 	default "wifi-latency-test"
-	depends on WIFI_UDP_LATENCY_TEST_MODE_SOFTAP && WIFI_UDP_LATENCY_DEVICE_ROLE_RX
+	depends on WIFI_UDP_PACKET_LATENCY_TEST_MODE_SOFTAP && WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX
 	help
 	  SSID for the SoftAP when RX device acts as access point
 
-config WIFI_UDP_LATENCY_SOFTAP_PSK
+config WIFI_UDP_PACKET_LATENCY_SOFTAP_PSK
 	string "SoftAP password"
 	default "testpass123"
-	depends on WIFI_UDP_LATENCY_TEST_MODE_SOFTAP && WIFI_UDP_LATENCY_DEVICE_ROLE_RX
+	depends on WIFI_UDP_PACKET_LATENCY_TEST_MODE_SOFTAP && WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX
 	help
 	  Password for the SoftAP when RX device acts as access point
 

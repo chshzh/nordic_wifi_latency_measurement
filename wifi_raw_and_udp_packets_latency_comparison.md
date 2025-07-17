@@ -283,7 +283,7 @@ For latency-critical applications requiring <5ms response times, raw TX is the p
 
 ## Related Projects
 
-- `wifi_raw_tx_packet_latency`: Implementation of raw TX packet transmission with SoftAP support
-- `wifi_udp_latency`: UDP-based latency measurement for comparison baseline
+- `wifi_raw_packet_latency`: Implementation of raw packet transmission with SoftAP support
+- `wifi_udp_packet_latency`: UDP-based latency measurement for comparison baseline
 
 Both projects provide practical implementations for measuring and comparing the latency characteristics described in this document. 

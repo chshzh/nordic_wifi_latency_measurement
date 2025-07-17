@@ -16,8 +16,8 @@ Thank you for your interest in contributing to this project! We welcome contribu
 1. **Fork the repository** on GitHub
 2. **Clone your fork**:
    ```bash
-   git clone https://github.com/yourusername/wifi_udp_latency.git
-   cd wifi_udp_latency
+   git clone https://github.com/yourusername/wifi_udp_packet_latency.git
+cd wifi_udp_packet_latency
    ```
 3. **Set up NCS environment** (adjust path to your installation):
    ```bash
