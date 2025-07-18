@@ -12,6 +12,8 @@
 #include <zephyr/net/conn_mgr_monitor.h>
 #include <zephyr/net/conn_mgr_connectivity.h>
 #include <zephyr/net/dhcpv4_server.h>
+#include <zephyr/drivers/gpio.h>
+#include <dk_buttons_and_leds.h>
 
 #if IS_ENABLED(CONFIG_WIFI_READY_LIB)
 #include <net/wifi_ready.h>
@@ -31,6 +33,11 @@ LOG_MODULE_REGISTER(main, CONFIG_LOG_DEFAULT_LEVEL);
 #define SOFTAP_EVENT_MASK (NET_EVENT_WIFI_AP_ENABLE_RESULT | \
                           NET_EVENT_WIFI_AP_STA_CONNECTED | \
                           NET_EVENT_WIFI_AP_STA_DISCONNECTED)
+
+/* Button control for TX task */
+static K_SEM_DEFINE(tx_start_sem, 0, 1);
+static volatile bool tx_task_running = false;
+static volatile bool tx_task_should_stop = false;
 
 /* Global semaphore to wait for network connectivity */
 K_SEM_DEFINE(network_connected, 0, 1);
@@ -96,6 +103,28 @@ static const char *wifi_state_to_string(wifi_connection_state_t state)
 }
 
 /* Note: Supplicant event handler removed - not available in this NCS version */
+
+#if IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_TX)
+/* Button callback function for TX device */
+static void button_handler(uint32_t button_state, uint32_t has_changed)
+{
+    if (has_changed & DK_BTN1_MSK && button_state & DK_BTN1_MSK) {
+        LOG_INF("Button 1 pressed - restarting TX task");
+        
+        /* Stop current TX task if running */
+        if (tx_task_running) {
+            tx_task_should_stop = true;
+            LOG_INF("Stopping current TX task...");
+            
+            /* Wait a bit for task to stop */
+            k_sleep(K_MSEC(100));
+        }
+        
+        /* Signal to start new TX task */
+        k_sem_give(&tx_start_sem);
+    }
+}
+#endif /* CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_TX */
 
 #if IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_TEST_MODE_SOFTAP) && \
     IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX)
@@ -573,7 +602,7 @@ static int connect_with_retry(int timeout_sec)
 #endif
 
 #if IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_TX)
-static void udp_tx_task(void)
+static void udp_tx_session(void)
 {
     int ret;
     int udp_socket;
@@ -583,7 +612,11 @@ static void udp_tx_task(void)
     uint32_t test_duration = CONFIG_WIFI_UDP_PACKET_LATENCY_TEST_DURATION_MS;
     uint32_t packet_interval = CONFIG_WIFI_UDP_PACKET_LATENCY_PACKET_INTERVAL_MS;
 
-    LOG_INF("Starting UDP TX");
+    LOG_INF("Starting UDP TX session");
+
+    /* Mark task as running */
+    tx_task_running = true;
+    tx_task_should_stop = false;
 
     /* Create UDP socket */
     ret = udp_client_init(&udp_socket, &server_addr, 
@@ -591,13 +624,14 @@ static void udp_tx_task(void)
                          CONFIG_WIFI_UDP_PACKET_LATENCY_UDP_PORT);
     if (ret) {
         LOG_ERR("Failed to initialize UDP client: %d", ret);
+        tx_task_running = false;
         return;
     }
 
     start_time = k_uptime_get();
 
     /* Main transmission loop */
-    while ((k_uptime_get() - start_time) < test_duration) {
+    while ((k_uptime_get() - start_time) < test_duration && !tx_task_should_stop) {
         char payload[64];
         int64_t current_time = k_uptime_get();
 
@@ -617,12 +651,37 @@ static void udp_tx_task(void)
             packet_count++;
         }
 
-        /* Wait for next transmission */
-        k_sleep(K_MSEC(packet_interval));
+        /* Wait for next transmission with shorter intervals to check for stop signal */
+        for (int i = 0; i < packet_interval/10 && !tx_task_should_stop; i++) {
+            k_sleep(K_MSEC(10));
+        }
     }
 
-    LOG_INF("TX task completed. Sent %u packets", packet_count);
+    if (tx_task_should_stop) {
+        LOG_INF("TX session stopped by button. Sent %u packets", packet_count);
+    } else {
+        LOG_INF("TX session completed. Sent %u packets", packet_count);
+    }
+    
     udp_client_cleanup(udp_socket);
+    tx_task_running = false;
+}
+
+static void udp_tx_task(void)
+{
+    LOG_INF("TX device ready. Press Button 1 to start/restart packet transmission");
+    
+    /* Start first transmission session */
+    udp_tx_session();
+    
+    /* Wait for button presses to restart transmission */
+    while (1) {
+        /* Wait for button press to restart */
+        k_sem_take(&tx_start_sem, K_FOREVER);
+        
+        LOG_INF("Button 1 pressed - starting new TX session");
+        udp_tx_session();
+    }
 }
 #endif /* CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_TX */
 
@@ -775,7 +834,22 @@ int main(void)
         return ret;
     }
 
+    /* Initialize buttons for TX control */
+    ret = dk_buttons_init(button_handler);
+    if (ret) {
+        LOG_ERR("Failed to initialize buttons: %d", ret);
+        return ret;
+    }
+    
+    /* Initialize LEDs */
+    ret = dk_leds_init();
+    if (ret) {
+        LOG_ERR("Failed to initialize LEDs: %d", ret);
+        return ret;
+    }
+
     LOG_INF("Network connected successfully, starting UDP TX task");
+    LOG_INF("Button 1: Start/restart packet transmission");
     udp_tx_task();
 
 #else
