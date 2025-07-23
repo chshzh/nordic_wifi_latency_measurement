@@ -92,14 +92,8 @@ cd wifi_udp_packet_latency
 # Build for TX Device (Test 1 and Test 2) - Standard
 west build -p -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=overlay-tx.conf
 
-# Build for TX Device - Optimized for Low Latency ⚡
-west build -p -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=overlay-tx-optimized.conf
-
 # Build for Test 1 - RX Device (External AP) - Standard
 west build -p -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=overlay-rx.conf
-
-# Build for Test 1 - RX Device (External AP) - Optimized ⚡
-west build -p -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=overlay-rx-optimized.conf
 
 # Build for Test 2 - RX Device (SoftAP) - Standard
 west build -p -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=overlay-rx-softap.conf

@@ -536,16 +536,6 @@ static int connect_to_network(void)
     /* Set connecting state */
     wifi_conn_state = WIFI_CONN_STATE_CONNECTING;
 
-    LOG_INF("Bringing up network interface");
-    ret = conn_mgr_all_if_up(true);
-    if (ret) {
-        LOG_ERR("Failed to bring up network interface: %d", ret);
-        wifi_conn_state = WIFI_CONN_STATE_FAILED;
-        return ret;
-    }
-    
-    LOG_INF("Network interface is up");
-
     LOG_INF("Initiating connection to network");
     ret = conn_mgr_all_if_connect(true);
     if (ret) {
@@ -838,13 +828,6 @@ int main(void)
     ret = dk_buttons_init(button_handler);
     if (ret) {
         LOG_ERR("Failed to initialize buttons: %d", ret);
-        return ret;
-    }
-    
-    /* Initialize LEDs */
-    ret = dk_leds_init();
-    if (ret) {
-        LOG_ERR("Failed to initialize LEDs: %d", ret);
         return ret;
     }
 

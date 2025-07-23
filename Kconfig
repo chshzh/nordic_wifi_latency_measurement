@@ -4,6 +4,8 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
+menu "UDP Packet Latency Test Configuration"
+
 config WIFI_UDP_PACKET_LATENCY_UDP_PORT
 	int "UDP port for communication"
 	default 12345
@@ -86,5 +88,7 @@ config WIFI_SOFTAP_REG_DOMAIN
 	  Set the ISO/IEC alpha2 country code for the country in
 	  which the device is currently operating.
 	  For world regulatory, use "00".
+
+endmenu
 
 source "Kconfig.zephyr" 
