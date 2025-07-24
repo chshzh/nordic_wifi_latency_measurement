@@ -281,9 +281,4 @@ The choice between raw TX and UDP depends on specific application requirements:
 
 For latency-critical applications requiring <5ms response times, raw TX is the preferred approach. For general networking applications requiring reliability and standard protocols, UDP remains the better choice.
 
-## Related Projects
-
-- `wifi_raw_packet_latency`: Implementation of raw packet transmission with SoftAP support
-- `wifi_udp_packet_latency`: UDP-based latency measurement for comparison baseline
-
 Both projects provide practical implementations for measuring and comparing the latency characteristics described in this document. 

@@ -4,90 +4,112 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
-menu "UDP Packet Latency Test Configuration"
+menu "WIFI Latency Test Configuration"
 
-config WIFI_UDP_PACKET_LATENCY_UDP_PORT
-	int "UDP port for communication"
-	default 12345
+choice WIFI_LATENCY_TEST_PACKET_TYPE
+	prompt "Transmission type"
+	default WIFI_LATENCY_TEST_PACKET_TYPE_UDP
 	help
-	  Port number used for UDP communication between devices
+	  Select the transmission type for latency testing
 
-config WIFI_UDP_PACKET_LATENCY_TEST_DURATION_MS
-	int "Test duration in milliseconds"
-	default 10000
+config WIFI_LATENCY_TEST_PACKET_TYPE_RAW
+	bool "Raw IEEE 802.11 packet transmission"
 	help
-	  Duration of the test in milliseconds
+	  Use raw IEEE 802.11 packet transmission for latency testing
 
-config WIFI_UDP_PACKET_LATENCY_PACKET_INTERVAL_MS
-	int "Packet transmission interval in milliseconds"
-	default 1000
+config WIFI_LATENCY_TEST_PACKET_TYPE_UDP
+	bool "UDP packet transmission"
 	help
-	  Interval between packet transmissions in milliseconds
-
-choice WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE
-	prompt "Device role"
-	default WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_TX
-	help
-	  Select the role of this device in the test
-
-config WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_TX
-	bool "UDP TX device"
-	help
-	  This device will transmit UDP packets
-
-config WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX
-	bool "UDP RX device"
-	help
-	  This device will receive UDP packets
+	  Use standard UDP socket transmission for latency testing
 
 endchoice
 
-choice WIFI_UDP_PACKET_LATENCY_TEST_MODE
+
+choice WIFI_LATENCY_TEST_DEVICE_ROLE_TYPE
+	prompt "Device role"
+	default WIFI_LATENCY_TEST_DEVICE_ROLE_TX
+	help
+	  Select the role of this device in the test
+
+config WIFI_LATENCY_TEST_DEVICE_ROLE_TX
+	bool "TX device"
+	help
+	  This device will transmit packets (UDP or Raw)
+
+config WIFI_LATENCY_TEST_DEVICE_ROLE_RX
+	bool "RX device"
+	help
+	  This device will receive packets (UDP or Raw)
+
+endchoice
+
+choice WIFI_LATENCY_TEST_RX_DEVICE_MODE
 	prompt "Test mode"
-	default WIFI_UDP_PACKET_LATENCY_TEST_MODE_AP
+	default WIFI_LATENCY_TEST_RX_DEVICE_MODE_STA
 	help
 	  Select the test mode
 
-config WIFI_UDP_PACKET_LATENCY_TEST_MODE_AP
+config WIFI_LATENCY_TEST_RX_DEVICE_MODE_STA
 	bool "Both devices connect to external AP"
 	help
 	  Test 1: Both devices connect to an external access point
 
-config WIFI_UDP_PACKET_LATENCY_TEST_MODE_SOFTAP
+config WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP
 	bool "RX device as SoftAP"
 	help
 	  Test 2: RX device acts as SoftAP, TX device connects to it
 
 endchoice
 
-config WIFI_UDP_PACKET_LATENCY_TARGET_IP
+config WIFI_LATENCY_TEST_TARGET_IP
 	string "Target IP address for UDP TX device"
 	default "192.168.1.100"
-	depends on WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_TX
+	depends on WIFI_LATENCY_TEST_DEVICE_ROLE_TX
 	help
 	  IP address of the UDP RX device
 
-config WIFI_UDP_PACKET_LATENCY_SOFTAP_SSID
+config WIFI_LATENCY_TEST_SOCKET_PORT
+	int "Socket port for communication"
+	default 12345
+	help
+	  Port number used for UDP communication between devices
+
+config WIFI_LATENCY_TEST_DURATION_MS
+	int "Test duration in milliseconds"
+	default 10000
+	help
+	  Duration of the test in milliseconds
+
+config WIFI_LATENCY_TEST_INTERVAL_MS
+	int "Packet transmission interval in milliseconds"
+	default 1000
+	help
+	  Interval between packet transmissions in milliseconds
+
+if WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP
+
+config WIFI_LATENCY_TEST_RX_DEVICE_SOFTAP_SSID
 	string "SoftAP SSID"
 	default "wifi-latency-test"
-	depends on WIFI_UDP_PACKET_LATENCY_TEST_MODE_SOFTAP && WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX
+	depends on WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP && WIFI_LATENCY_TEST_DEVICE_ROLE_RX
 	help
 	  SSID for the SoftAP when RX device acts as access point
 
-config WIFI_UDP_PACKET_LATENCY_SOFTAP_PSK
+config WIFI_LATENCY_TEST_RX_DEVICE_SOFTAP_PSK
 	string "SoftAP password"
 	default "testpass123"
-	depends on WIFI_UDP_PACKET_LATENCY_TEST_MODE_SOFTAP && WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX
+	depends on WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP && WIFI_LATENCY_TEST_DEVICE_ROLE_RX
 	help
 	  Password for the SoftAP when RX device acts as access point
 
-config WIFI_SOFTAP_REG_DOMAIN
+config WIFI_LATENCY_TEST_RX_DEVICE_SOFTAP_REG_DOMAIN
 	string "The ISO/IEC alpha2 country code"
 	default "00"
 	help
 	  Set the ISO/IEC alpha2 country code for the country in
 	  which the device is currently operating.
 	  For world regulatory, use "00".
+endif
 
 endmenu
 

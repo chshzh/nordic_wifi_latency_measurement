@@ -22,6 +22,7 @@
 #include "wifi_utils.h"
 #include "udp_utils.h"
 #include "led_utils.h"
+#include "raw_utils.h"
 
 LOG_MODULE_REGISTER(main, CONFIG_LOG_DEFAULT_LEVEL);
 
@@ -60,8 +61,7 @@ static K_SEM_DEFINE(wifi_ready_sem, 0, 1);
 static bool wifi_ready_status = false;
 #endif
 
-#if IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_TEST_MODE_SOFTAP) && \
-    IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX)
+#if IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP)
 /* SoftAP support */
 static bool dhcp_server_started = false;
 static K_MUTEX_DEFINE(softap_mutex);
@@ -75,17 +75,16 @@ struct softap_station {
 
 #define MAX_SOFTAP_STATIONS 4
 static struct softap_station connected_stations[MAX_SOFTAP_STATIONS];
-#endif
+#endif /* CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP */
 
 /* Declare the callback structures for Wi-Fi and network events */
 static struct net_mgmt_event_callback wifi_mgmt_cb;
 static struct net_mgmt_event_callback net_mgmt_cb;
 /* Note: Supplicant callback removed - not available in this NCS version */
 
-#if IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_TEST_MODE_SOFTAP) && \
-    IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX)
+#if IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP)
 static struct net_mgmt_event_callback softap_mgmt_cb;
-#endif
+#endif /* CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP */
 
 /* Define the boolean wifi_connected_signal */
 static volatile bool wifi_connected_signal;
@@ -104,7 +103,7 @@ static const char *wifi_state_to_string(wifi_connection_state_t state)
 
 /* Note: Supplicant event handler removed - not available in this NCS version */
 
-#if IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_TX)
+#if IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_DEVICE_ROLE_TX)
 /* Button callback function for TX device */
 static void button_handler(uint32_t button_state, uint32_t has_changed)
 {
@@ -124,10 +123,9 @@ static void button_handler(uint32_t button_state, uint32_t has_changed)
         k_sem_give(&tx_start_sem);
     }
 }
-#endif /* CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_TX */
+#endif /* CONFIG_WIFI_LATENCY_TEST_DEVICE_ROLE_TX */
 
-#if IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_TEST_MODE_SOFTAP) && \
-    IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX)
+#if IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP)
 
 static int get_station_ip_address(const uint8_t *mac, struct in_addr *ip_addr)
 {
@@ -351,8 +349,8 @@ static int setup_softap_mode(void)
     }
     
     /* Setup SoftAP */
-    ret = wifi_setup_softap(CONFIG_WIFI_UDP_PACKET_LATENCY_SOFTAP_SSID,
-                           CONFIG_WIFI_UDP_PACKET_LATENCY_SOFTAP_PSK);
+    ret = wifi_setup_softap(CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_SOFTAP_SSID,
+                           CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_SOFTAP_PSK);
     if (ret) {
         LOG_ERR("Failed to setup SoftAP: %d", ret);
         return ret;
@@ -363,7 +361,7 @@ static int setup_softap_mode(void)
     return 0;
 }
 
-#endif /* CONFIG_WIFI_UDP_PACKET_LATENCY_TEST_MODE_SOFTAP && CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX */
+#endif /* CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP */
 
 #if IS_ENABLED(CONFIG_WIFI_READY_LIB)
 void wifi_ready_callback(bool wifi_ready)
@@ -510,8 +508,7 @@ static int init_network_events(void)
     net_mgmt_add_event_callback(&net_mgmt_cb);
     LOG_DBG("Network L3 event handler registered");
 
-#if IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_TEST_MODE_SOFTAP) && \
-    IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX)
+#if IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP)
     /* Initialize SoftAP event callbacks */
     net_mgmt_init_event_callback(&softap_mgmt_cb, softap_mgmt_event_handler, SOFTAP_EVENT_MASK);
     net_mgmt_add_event_callback(&softap_mgmt_cb);
@@ -522,9 +519,9 @@ static int init_network_events(void)
     return 0;
 }
 
-#if IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_TX) || \
-    (IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX) && \
-     IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_TEST_MODE_AP))
+#if IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_DEVICE_ROLE_TX) || \
+    (IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_DEVICE_ROLE_RX) && \
+     IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_MODE_STA))
 /* Enhanced connection function with better debugging */
 static int connect_to_network(void)
 {
@@ -591,7 +588,8 @@ static int connect_with_retry(int timeout_sec)
 }
 #endif
 
-#if IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_TX)
+#if IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_DEVICE_ROLE_TX) && \
+    IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_PACKET_TYPE_UDP)
 static void udp_tx_session(void)
 {
     int ret;
@@ -599,8 +597,8 @@ static void udp_tx_session(void)
     struct sockaddr_in server_addr;
     uint32_t packet_count = 0;
     int64_t start_time;
-    uint32_t test_duration = CONFIG_WIFI_UDP_PACKET_LATENCY_TEST_DURATION_MS;
-    uint32_t packet_interval = CONFIG_WIFI_UDP_PACKET_LATENCY_PACKET_INTERVAL_MS;
+    uint32_t test_duration = CONFIG_WIFI_LATENCY_TEST_DURATION_MS;
+    uint32_t packet_interval = CONFIG_WIFI_LATENCY_TEST_INTERVAL_MS;
 
     LOG_INF("Starting UDP TX session");
 
@@ -610,8 +608,8 @@ static void udp_tx_session(void)
 
     /* Create UDP socket */
     ret = udp_client_init(&udp_socket, &server_addr, 
-                         CONFIG_WIFI_UDP_PACKET_LATENCY_TARGET_IP,
-                         CONFIG_WIFI_UDP_PACKET_LATENCY_UDP_PORT);
+                         CONFIG_WIFI_LATENCY_TEST_TARGET_IP,
+                         CONFIG_WIFI_LATENCY_TEST_SOCKET_PORT);
     if (ret) {
         LOG_ERR("Failed to initialize UDP client: %d", ret);
         tx_task_running = false;
@@ -673,9 +671,9 @@ static void udp_tx_task(void)
         udp_tx_session();
     }
 }
-#endif /* CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_TX */
+#endif /* CONFIG_WIFI_LATENCY_TEST_DEVICE_ROLE_TX && CONFIG_WIFI_LATENCY_TEST_PACKET_TYPE_UDP */
 
-#if IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX)
+#if IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_DEVICE_ROLE_RX)
 static void udp_rx_task(void)
 {
     int ret;
@@ -683,13 +681,13 @@ static void udp_rx_task(void)
     uint32_t packet_count = 0;
 
     /* Create UDP socket for receiving */
-    ret = udp_server_init(&udp_socket, CONFIG_WIFI_UDP_PACKET_LATENCY_UDP_PORT);
+    ret = udp_server_init(&udp_socket, CONFIG_WIFI_LATENCY_TEST_SOCKET_PORT);
     if (ret) {
         LOG_ERR("Failed to initialize UDP server: %d", ret);
         return;
     }
 
-    LOG_INF("UDP server listening on port %d", CONFIG_WIFI_UDP_PACKET_LATENCY_UDP_PORT);
+    LOG_INF("UDP server listening on port %d", CONFIG_WIFI_LATENCY_TEST_SOCKET_PORT);
 
     /* Main reception loop */
     while (1) {
@@ -713,13 +711,16 @@ static void udp_rx_task(void)
     LOG_INF("RX task completed. Received %u packets", packet_count);
     udp_server_cleanup(udp_socket);
 }
-#endif /* CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX */
+#endif /* CONFIG_WIFI_LATENCY_TEST_DEVICE_ROLE_RX */
 
 int main(void)
 {
     int ret;
 
-    LOG_INF("Starting Wi-Fi UDP Latency Test Application");
+    LOG_INF("Starting Wi-Fi Packet Latency Test Application");
+#if IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_PACKET_TYPE_UDP)
+    LOG_INF("Transmission mode: UDP packets");
+#endif
 
     /* Initialize LED GPIO for timing measurements */
     ret = led_init();
@@ -769,55 +770,11 @@ int main(void)
     LOG_INF("WiFi interface found: %p", iface);
     LOG_INF("WiFi subsystem initialization complete");
 
-#if IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_TEST_MODE_SOFTAP) && \
-    IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX)
-    /* RX device in SoftAP mode */
-    LOG_INF("Device role: RX (SoftAP mode)");
-
-    ret = setup_softap_mode();
-    if (ret) {
-        LOG_ERR("Failed to setup SoftAP mode: %d", ret);
-        return ret;
-    }
-
-    /* Print detailed WiFi status when connected */
-    wifi_print_status();
-
-    LOG_INF("SoftAP setup complete, waiting for station to connect...");
-    LOG_INF("SSID: %s", CONFIG_WIFI_UDP_PACKET_LATENCY_SOFTAP_SSID);
-    LOG_INF("Password: %s", CONFIG_WIFI_UDP_PACKET_LATENCY_SOFTAP_PSK);
-    LOG_INF("UDP server will start once a station connects");
-    
-    /* Wait for a station to connect before starting UDP RX */
-    ret = k_sem_take(&station_connected_sem, K_FOREVER);
-    if (ret) {
-        LOG_ERR("Error waiting for station connection: %d", ret);
-        return ret;
-    }
-    
-    LOG_INF("Station connected! Starting UDP RX server...");
-    udp_rx_task();
-
-#elif IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_RX) && \
-      IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_TEST_MODE_AP)
-    /* RX device in station mode */
-    LOG_INF("Device role: RX (Station mode)");
-    
-    /* Use enhanced connection with retry logic */
-    ret = connect_with_retry(60);
-    if (ret) {
-        LOG_ERR("Failed to establish network connection after retries");
-        return ret;
-    }
-
-    LOG_INF("Network connected successfully, starting UDP RX");
-    udp_rx_task();
-
-#elif IS_ENABLED(CONFIG_WIFI_UDP_PACKET_LATENCY_DEVICE_ROLE_TX)
+#if IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_DEVICE_ROLE_TX)
     /* TX device */
     LOG_INF("Device role: TX");
-    
-    /* Use enhanced connection with retry logic */  
+
+    /* Use enhanced connection with retry logic */ 
     ret = connect_with_retry(60);
     if (ret) {
         LOG_ERR("Failed to establish network connection after retries");
@@ -831,9 +788,58 @@ int main(void)
         return ret;
     }
 
-    LOG_INF("Network connected successfully, starting UDP TX task");
+    LOG_INF("Network connected successfully, starting TX task");
     LOG_INF("Button 1: Start/restart packet transmission");
+#if IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_PACKET_TYPE_UDP)
     udp_tx_task();
+#endif
+
+#elif IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_DEVICE_ROLE_RX) 
+#if IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP)
+    /* RX device in SoftAP mode */
+    LOG_INF("Device role: RX (SoftAP mode)");
+
+    ret = setup_softap_mode();
+    if (ret) {
+        LOG_ERR("Failed to setup SoftAP mode: %d", ret);
+        return ret;
+    }
+
+    /* Print detailed WiFi status when connected */
+    wifi_print_status();
+
+    LOG_INF("SoftAP setup complete, waiting for station to connect...");
+    LOG_INF("SSID: %s", CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_SOFTAP_SSID);
+    LOG_INF("Password: %s", CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_SOFTAP_PSK);
+    LOG_INF("UDP server will start once a station connects");
+    
+    /* Wait for a station to connect before starting UDP RX */
+    ret = k_sem_take(&station_connected_sem, K_FOREVER);
+    if (ret) {
+        LOG_ERR("Error waiting for station connection: %d", ret);
+        return ret;
+    }
+    
+    LOG_INF("Station connected! Starting RX server...");
+
+
+#elif IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_MODE_STA)
+    /* RX device in station mode */
+    LOG_INF("Device role: RX (Station mode)");
+    
+    /* Use enhanced connection with retry logic */
+    ret = connect_with_retry(60);
+    if (ret) {
+        LOG_ERR("Failed to establish network connection after retries");
+        return ret;
+    }
+
+    LOG_INF("Network connected successfully, starting RX task");
+#endif /* CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP */
+
+#if IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_PACKET_TYPE_UDP)
+    udp_rx_task();
+#endif
 
 #else
     LOG_ERR("No valid device role configured");

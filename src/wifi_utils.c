@@ -18,6 +18,7 @@
 
 LOG_MODULE_REGISTER(wifi_utils, CONFIG_LOG_DEFAULT_LEVEL);
 
+#if IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP)
 int wifi_set_reg_domain(void)
 {
 	struct net_if *iface;
@@ -31,7 +32,7 @@ int wifi_set_reg_domain(void)
 	}
 
 	regd.oper = WIFI_MGMT_SET;
-	strncpy(regd.country_code, CONFIG_WIFI_SOFTAP_REG_DOMAIN,
+	strncpy(regd.country_code, CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_SOFTAP_REG_DOMAIN,
 		(WIFI_COUNTRY_CODE_LEN + 1));
 
 	ret = net_mgmt(NET_REQUEST_WIFI_REG_DOMAIN, iface,
@@ -39,7 +40,7 @@ int wifi_set_reg_domain(void)
 	if (ret) {
 		LOG_ERR("Cannot %s Regulatory domain: %d", "SET", ret);
 	} else {
-		LOG_INF("Regulatory domain set to %s", CONFIG_WIFI_SOFTAP_REG_DOMAIN);
+		LOG_INF("Regulatory domain set to %s", CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_SOFTAP_REG_DOMAIN);
 	}
 
 	return ret;
@@ -82,6 +83,7 @@ int wifi_setup_softap(const char *ssid, const char *psk)
 
     return 0;
 }
+#endif /* CONFIG_WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP */
 
 int wifi_print_status(void)
 {

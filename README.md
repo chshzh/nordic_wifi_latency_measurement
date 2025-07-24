@@ -58,7 +58,7 @@ RX device creates a SoftAP, TX device connects directly to it.
 ## 🏗️ Project Structure
 
 ```
-wifi_udp_packet_latency/
+wifi_latency_test/
 ├── src/
 │   ├── main.c              # Main application logic
 │   ├── wifi_utils.c/.h     # Wi-Fi management
@@ -66,10 +66,9 @@ wifi_udp_packet_latency/
 │   └── led_utils.c/.h      # LED control and timing
 ├── script/
 │   └── ppk_record_analysis.py  # PPK2 CSV analysis tool
-├── boards/                 # Board-specific configurations
-├── overlay-tx.conf         # TX device configuration
-├── overlay-rx.conf         # RX device (external AP)
-├── overlay-rx-softap.conf  # RX device (SoftAP mode)
+├── overlay-udp-tx-sta.conf         # UDP Packet TX device on STA mode
+├── overlay-udp-rx-sta.conf         # UPD Packet RX device on STA mode
+├── overlay-udp-rx-softap.conf      # UDP Packet RX device on SoftAP mode
 ├── prj.conf               # Base project configuration
 ├── CMakeLists.txt         # Build configuration
 └── sample.yaml            # Sample metadata
@@ -86,17 +85,17 @@ Ensure you have the [Nordic Connect SDK environment](https://docs.nordicsemi.com
 
 ```bash
 # Clone the project (adjust URL to your GitHub repository)
-git clone https://github.com/chshzh/wifi_udp_packet_latency.git
-cd wifi_udp_packet_latency
+git clone https://github.com/chshzh/wifi_latency_test.git
+cd wifi_latency_test
 
 # Build for TX Device (Test 1 and Test 2) - Standard
-west build -p -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=overlay-tx.conf
+west build -p -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=overlay-udp-tx-sta.conf
 
 # Build for Test 1 - RX Device (External AP) - Standard
-west build -p -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=overlay-rx.conf
+west build -p -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=overlay-udp-rx-sta.conf
 
 # Build for Test 2 - RX Device (SoftAP) - Standard
-west build -p -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=overlay-rx-softap.conf
+west build -p -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=overlay-udp-rx-softap.conf
 ```
 
 ### 3. Flash and Run
@@ -110,37 +109,37 @@ west flash
 ### Wi-Fi Credentials
 
 #### For Test 1 (External AP)
-Update your Wi-Fi credentials in `overlay-tx.conf` and `overlay-rx.conf`:
+Update your Wi-Fi credentials in `overlay-udp-tx-sta.conf` and `overlay-udp-rx-sta.conf`:
 
 ```conf
 CONFIG_WIFI_CREDENTIALS_STATIC_SSID="YourWiFiSSID"
 CONFIG_WIFI_CREDENTIALS_STATIC_PASSWORD="YourWiFiPassword"
-CONFIG_WIFI_UDP_PACKET_LATENCY_TARGET_IP="192.168.1.100"  # RX device IP
+CONFIG_WIFI_LATENCY_TEST_TARGET_IP="192.168.1.100"  # RX device IP
 ```
 
 #### For Test 2 (SoftAP)
-Default SoftAP configuration in `overlay-rx-softap.conf` for RX device:
+Default SoftAP configuration in `overlay-udp-rx-softap.conf` for RX device:
 
 ```conf
-CONFIG_WIFI_UDP_PACKET_LATENCY_SOFTAP_SSID="wifi-latency-test"
-CONFIG_WIFI_UDP_PACKET_LATENCY_SOFTAP_PSK="testpass123"
+CONFIG_WIFI_LATENCY_TEST_SOFTAP_SSID="wifi-latency-test"
+CONFIG_WIFI_LATENCY_TEST_SOFTAP_PSK="testpass123"
 ```
 
-Update your Wi-Fi credentials in `overlay-tx.conf` for TX device:
+Update your Wi-Fi credentials in `overlay-udp-tx-sta.conf` for TX device:
 
 ```conf
 CONFIG_WIFI_CREDENTIALS_STATIC_SSID="wifi-latency-test"
 CONFIG_WIFI_CREDENTIALS_STATIC_PASSWORD="testpass123"
-CONFIG_WIFI_UDP_PACKET_LATENCY_TARGET_IP="192.168.1.1"  # RX device IP
+CONFIG_WIFI_LATENCY_TEST_TARGET_IP="192.168.1.1"  # RX device IP
 ```
 
 ### Test Parameters
 
 | Parameter | Config Option | Default | Description |
 |-----------|---------------|---------|-------------|
-| UDP Port | `CONFIG_WIFI_UDP_PACKET_LATENCY_UDP_PORT` | 12345 | Communication port |
-| Test Duration | `CONFIG_WIFI_UDP_PACKET_LATENCY_TEST_DURATION_MS` | 10000 | Test length in ms |
-| Packet Interval | `CONFIG_WIFI_UDP_PACKET_LATENCY_PACKET_INTERVAL_MS` | 1000 | TX interval in ms |
+| UDP Port | `CONFIG_WIFI_LATENCY_TEST_SOCKET_PORT` | 12345 | Communication port |
+| Test Duration | `CONFIG_WIFI_LATENCY_TEST_DURATION_MS` | 10000 | Test length in ms |
+| Packet Interval | `CONFIG_WIFI_LATENCY_TEST_INTERVAL_MS` | 1000 | TX interval in ms |
 
 ## 🎮 Hardware Interface
 
@@ -297,8 +296,8 @@ This document provides the theoretical foundation and practical guidance for und
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/chshzh/wifi_udp_packet_latency/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/chshzh/wifi_udp_packet_latency/discussions)
+- **Issues**: [GitHub Issues](https://github.com/chshzh/wifi_latency_test/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/chshzh/wifi_latency_test/discussions)
 - **Nordic DevZone**: [devzone.nordicsemi.com](https://devzone.nordicsemi.com/)
 - **Documentation**: [nRF Connect SDK Documentation](https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/index.html)
 
