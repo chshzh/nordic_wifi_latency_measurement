@@ -24,7 +24,7 @@ config WIFI_LATENCY_TEST_PACKET_TYPE_UDP
 
 endchoice
 
-
+# Common configurations for both packet types
 choice WIFI_LATENCY_TEST_DEVICE_ROLE_TYPE
 	prompt "Device role"
 	default WIFI_LATENCY_TEST_DEVICE_ROLE_TX
@@ -43,34 +43,11 @@ config WIFI_LATENCY_TEST_DEVICE_ROLE_RX
 
 endchoice
 
-choice WIFI_LATENCY_TEST_RX_DEVICE_MODE
-	prompt "Test mode"
-	default WIFI_LATENCY_TEST_RX_DEVICE_MODE_STA
-	help
-	  Select the test mode
-
-config WIFI_LATENCY_TEST_RX_DEVICE_MODE_STA
-	bool "Both devices connect to external AP"
-	help
-	  Test 1: Both devices connect to an external access point
-
-config WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP
-	bool "RX device as SoftAP"
-	help
-	  Test 2: RX device acts as SoftAP, TX device connects to it
-
-endchoice
-
-config WIFI_LATENCY_TEST_TARGET_IP
-	string "Target IP address for UDP TX device"
-	default "192.168.1.100"
-	depends on WIFI_LATENCY_TEST_DEVICE_ROLE_TX
-	help
-	  IP address of the UDP RX device
-
+# Common configurations for all packet types
 config WIFI_LATENCY_TEST_SOCKET_PORT
 	int "Socket port for communication"
 	default 12345
+	depends on WIFI_LATENCY_TEST_PACKET_TYPE_UDP
 	help
 	  Port number used for UDP communication between devices
 
@@ -86,30 +63,195 @@ config WIFI_LATENCY_TEST_INTERVAL_MS
 	help
 	  Interval between packet transmissions in milliseconds
 
-if WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP
-
-config WIFI_LATENCY_TEST_RX_DEVICE_SOFTAP_SSID
-	string "SoftAP SSID"
-	default "wifi-latency-test"
-	depends on WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP && WIFI_LATENCY_TEST_DEVICE_ROLE_RX
-	help
-	  SSID for the SoftAP when RX device acts as access point
-
-config WIFI_LATENCY_TEST_RX_DEVICE_SOFTAP_PSK
-	string "SoftAP password"
-	default "testpass123"
-	depends on WIFI_LATENCY_TEST_RX_DEVICE_MODE_SOFTAP && WIFI_LATENCY_TEST_DEVICE_ROLE_RX
-	help
-	  Password for the SoftAP when RX device acts as access point
-
-config WIFI_LATENCY_TEST_RX_DEVICE_SOFTAP_REG_DOMAIN
+config WIFI_LATENCY_TEST_REG_DOMAIN
 	string "The ISO/IEC alpha2 country code"
 	default "00"
+	depends on UDP_RX_DEV_MODE_SOFTAP || RAW_RX_DEV_MODE_MONITOR
 	help
 	  Set the ISO/IEC alpha2 country code for the country in
 	  which the device is currently operating.
 	  For world regulatory, use "00".
-endif
+
+# UDP specific configurations
+if WIFI_LATENCY_TEST_PACKET_TYPE_UDP
+
+if WIFI_LATENCY_TEST_DEVICE_ROLE_TX
+config UDP_TX_DEV_MODE_STA
+	bool "TX device in Station mode"
+	default y
+	help
+	  TX device operates in Station mode to connect to an AP
+config UDP_TX_DEV_TARGET_IP
+	string "Target IP address for UDP TX device"
+	default "192.168.1.100"
+	help
+	  IP address of the UDP RX device
+endif # WIFI_LATENCY_TEST_DEVICE_ROLE_TX
+
+if WIFI_LATENCY_TEST_DEVICE_ROLE_RX
+choice UDP_RX_DEV_MODE
+	prompt "UDP RX device mode"
+	default UDP_RX_DEV_MODE_STA
+	help
+	  Select the test mode for UDP RX device
+
+config UDP_RX_DEV_MODE_STA
+	bool "Both devices connect to external AP"
+	help
+	  Test 1: Both devices connect to an external access point
+
+config UDP_RX_DEV_MODE_SOFTAP
+	bool "RX device as SoftAP"
+	help
+	  Test 2: RX device acts as SoftAP, TX device connects to it
+
+endchoice
+
+if UDP_RX_DEV_MODE_SOFTAP
+config UDP_RX_DEV_MODE_SOFTAP_SSID
+	string "SoftAP SSID"
+	default "wifi-latency-test"
+	help
+	  SSID for the SoftAP when RX device acts as access point
+
+config UDP_RX_DEV_MODE_SOFTAP_PSK
+	string "SoftAP password"
+	default "testpass123"
+	help
+	  Password for the SoftAP when RX device acts as access point
+
+endif # UDP_RX_DEV_MODE_SOFTAP
+
+endif # WIFI_LATENCY_TEST_DEVICE_ROLE_RX
+
+endif # WIFI_LATENCY_TEST_PACKET_TYPE_UDP
+
+# Raw packet specific configurations
+if WIFI_LATENCY_TEST_PACKET_TYPE_RAW
+
+if WIFI_LATENCY_TEST_DEVICE_ROLE_TX
+
+choice RAW_TX_DEV_MODE
+	prompt "Raw TX transmission mode"
+	default RAW_TX_DEV_MODE_NON_CONNECTED
+	help
+	  Select raw transmission mode
+
+config RAW_TX_DEV_MODE_NON_CONNECTED
+	bool "Non-connected mode"
+	help
+	  Transmit raw packets without connecting to an AP
+
+config RAW_TX_DEV_MODE_CONNECTED
+	bool "Connected mode"
+	help
+	  Connect to an AP before transmitting raw packets
+
+endchoice
+
+config RAW_TX_DEV_INJECTION_ENABLE
+	bool "Enable TX injection mode"
+	default y
+	help
+	  Enable TX injection mode for raw packet transmission
+
+config RAW_TX_DEV_CHANNEL
+	int "Channel for non-connected Station mode"
+	depends on RAW_TX_DEV_MODE_NON_CONNECTED
+	range 1 233
+	help
+	  Specify the Wi-Fi channel for transmitting raw TX packets in non-connected Station mode.
+	  The valid channel range is 1 to 233.
+
+config RAW_TX_DEV_RATE_VALUE
+	int "MCS index or Data rate value"
+	default 0
+	help
+	  Specify the Wi-Fi data rate value for raw TX packet transmission.
+	  The value represents either the data rate in Mbps or Modulation and coding (MCS) index.
+	  Note: 5.5Mbps is treated specially as 55 to avoid floating point usage.
+	  Legacy: 1, 2, 55, 11, 6, 9, 12, 18, 24, 36, 48, 54
+	  MCS index: 0-7
+
+config RAW_TX_DEV_RATE_FLAGS
+	int "Rate flag value"
+	range 0 4
+	default 1
+	help
+	  Specify the rate flag value to be used for raw TX packet transmission.
+	  Rate Flags:
+	  0 - Legacy
+	  1 - 11n format
+	  2 - VHT format
+	  3 - HE_SU
+	  4 - HE_ER_SU
+
+config RAW_TX_DEV_QUEUE_NUM
+	int "Queue number"
+	default 0
+	range 0 4
+	help
+	  Specify the transmission queue number for raw TX packets.
+	  0 - Background
+	  1 - Best effort
+	  2 - Video
+	  3 - Voice
+	  4 - Beacon.
+
+endif # WIFI_LATENCY_TEST_DEVICE_ROLE_TX
+
+
+if WIFI_LATENCY_TEST_DEVICE_ROLE_RX
+choice RAW_RX_DEV_MODE
+	prompt "Raw RX device mode"
+	default RAW_RX_DEV_MODE_MONITOR
+	help
+	  Select the test mode for Raw RX device
+
+config RAW_RX_DEV_MODE_MONITOR
+	bool "RX device in Monitor mode"
+	help
+	  RX device operates in monitor mode to capture raw packets
+
+config RAW_RX_DEV_MODE_PROMISCUOUS
+	bool "RX device in Promiscuous mode"
+	help
+	  RX device operates in promiscuous mode to capture raw packets
+
+endchoice
+
+if RAW_RX_DEV_MODE_MONITOR
+config RAW_RX_DEV_MODE_MONITOR_CHANNEL
+	int "Wi-Fi channel for monitor mode"
+	default 1
+	range 1 233
+	help
+	  Wi-Fi channel to monitor for raw packets
+
+config RAW_RX_DEV_RX_STACK_SIZE
+	int "RX thread stack size for monitor mode"
+	default 4096
+	help
+	  Stack size for the RX thread in monitor mode
+endif # RAW_RX_DEV_MODE_MONITOR
+
+if RAW_RX_DEV_MODE_PROMISCUOUS
+config RAW_RX_DEV_MODE_PROMISCUOUS_RECV_BUFFER_SIZE
+	int "Receive buffer size for promiscuous mode"
+	default 1024
+	help
+	  Size of the receive buffer for promiscuous mode
+
+config RAW_RX_DEV_MODE_PROMISCUOUS_RX_THREAD_STACK_SIZE
+	int "RX thread stack size for promiscuous mode"
+	default 4096
+	help
+	  Stack size for the RX thread in promiscuous mode
+endif # RAW_RX_DEV_MODE_PROMISCUOUS
+
+endif # WIFI_LATENCY_TEST_DEVICE_ROLE_RX
+
+endif # WIFI_LATENCY_TEST_PACKET_TYPE_RAW
 
 endmenu
 

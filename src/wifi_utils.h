@@ -20,13 +20,6 @@
 int wifi_setup_softap(const char *ssid, const char *psk);
 
 /**
- * @brief Get current Wi-Fi status
- * 
- * @return 0 on success, negative error code on failure
- */
-int wifi_get_status(void);
-
-/**
  * @brief Print detailed Wi-Fi status information
  * 
  * @return 0 on success, negative error code on failure
@@ -41,7 +34,14 @@ int wifi_print_status(void);
 void wifi_print_dhcp_ip(struct net_mgmt_event_callback *cb);
 
 /**
- * @brief Set Wi-Fi channel (for non-connected mode)
+ * @brief Set Wi-Fi regulatory domain
+ * 
+ * @return 0 on success, negative error code on failure
+ */
+int wifi_set_reg_domain(void);
+
+/**
+ * @brief Set Wi-Fi channel for raw packet operations
  * 
  * @param channel Channel number to set
  * @return 0 on success, negative error code on failure
@@ -49,10 +49,18 @@ void wifi_print_dhcp_ip(struct net_mgmt_event_callback *cb);
 int wifi_set_channel(int channel);
 
 /**
- * @brief Set Wi-Fi regulatory domain
+ * @brief Set Wi-Fi mode
+ * 
+ * @param mode Mode value to set
+ * @return 0 on success, negative error code on failure
+ */
+int wifi_set_mode(int mode);
+
+/**
+ * @brief Enable TX injection mode
  * 
  * @return 0 on success, negative error code on failure
  */
-int wifi_set_reg_domain(void);
+int wifi_set_tx_injection_mode(void);
 
 #endif /* WIFI_UTILS_H */ 
