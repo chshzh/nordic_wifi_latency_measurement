@@ -8,7 +8,7 @@ on:
 
 jobs:
   set-image-tag:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     outputs:
       IMAGE_TAG: ${{ steps.set-output.outputs.IMAGE_TAG }}
     steps:
@@ -28,11 +28,17 @@ jobs:
         id: set-output
         working-directory: app-workspace
         run: echo "IMAGE_TAG=$(./nrf/scripts/print_toolchain_checksum.sh)" >> $GITHUB_OUTPUT
+      
+      - name: Display GITHUB_OUTPUT content
+        working-directory: app-workspace
+        run: |
+          echo "Contents of GITHUB_OUTPUT:"
+          cat $GITHUB_OUTPUT
 
   build-and-test-in-docker:
     needs: set-image-tag
-    runs-on: ubuntu-24.04
-    container: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.set-image-tag.outputs.IMAGE_TAG }}
+    runs-on: ubuntu-22.04
+    container: ghcr.io/nrfconnect/sdk-nrf-toolchain:v3.0.2
     defaults:
       run:
         # Bash shell is needed to set toolchain related environment variables in docker container
@@ -74,7 +80,7 @@ jobs:
       - name: Build ${{ matrix.config.name }}
         working-directory: app-workspace/wifi_latency_test
         run: |
-          west build -p auto -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=${{ matrix.config.overlay }}
+          west build -p -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=${{ matrix.config.overlay }}
 
       - name: Upload build artifacts for ${{ matrix.config.name }}
         uses: actions/upload-artifact@v4
@@ -170,7 +176,13 @@ jobs:
           echo "Python script validation passed ✓"
 
   static-analysis:
-    runs-on: ubuntu-latest
+    needs: set-image-tag
+    runs-on: ubuntu-24.04
+    container: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.set-image-tag.outputs.IMAGE_TAG }}
+    defaults:
+      run:
+        # Bash shell is needed to set toolchain related environment variables in docker container
+        shell: bash
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -180,14 +192,8 @@ jobs:
       - name: Prepare west project for style checks
         working-directory: app-workspace
         run: |
-          python3 -m pip install west
           west init -l wifi_latency_test
           west update -o=--depth=1 -n
-        
-      - name: Install analysis tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format perl
           
       - name: Run Zephyr checkpatch
         working-directory: app-workspace
