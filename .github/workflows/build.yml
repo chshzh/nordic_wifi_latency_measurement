@@ -2,37 +2,34 @@ name: Build and Test Wi-Fi Latency Application
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, test-build-workflow]
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0, v2.1.3, etc.
   pull_request:
     branches: [ main ]
 
 jobs:
-  set-image-tag:
-    runs-on: ubuntu-24.04
+  set-version:
+    runs-on: ubuntu-22.04
     outputs:
-      IMAGE_TAG: ${{ steps.set-output.outputs.IMAGE_TAG }}
+      NCS_VERSION: ${{ steps.extract-version.outputs.NCS_VERSION }}
     steps:
-      - name: Checkout wifi latency test repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           path: app-workspace/wifi_latency_test
 
-      - name: Prepare west project
-        working-directory: app-workspace
+      - name: Extract NCS version from west.yml
+        id: extract-version
+        working-directory: app-workspace/wifi_latency_test
         run: |
-          python3 -m pip install west
-          west init -l wifi_latency_test
-          west update -o=--depth=1 -n
-
-      - name: Find toolchain bundle id
-        id: set-output
-        working-directory: app-workspace
-        run: echo "IMAGE_TAG=$(./nrf/scripts/print_toolchain_checksum.sh)" >> $GITHUB_OUTPUT
+          NCS_VERSION=$(grep 'revision:' west.yml | awk '{print $2}')
+          echo "NCS_VERSION=${NCS_VERSION}" >> $GITHUB_OUTPUT
 
   build-and-test-in-docker:
-    needs: set-image-tag
-    runs-on: ubuntu-24.04
-    container: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.set-image-tag.outputs.IMAGE_TAG }}
+    needs: set-version
+    runs-on: ubuntu-22.04
+    container: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.set-version.outputs.NCS_VERSION }}
     defaults:
       run:
         # Bash shell is needed to set toolchain related environment variables in docker container
@@ -58,7 +55,6 @@ jobs:
           - name: "Raw RX Monitor"
             overlay: "overlay-raw-rx-monitor.conf"
             description: "Raw RX device in monitor mode"
-    
     steps:
       - name: Checkout wifi latency test repository
         uses: actions/checkout@v4
@@ -74,7 +70,7 @@ jobs:
       - name: Build ${{ matrix.config.name }}
         working-directory: app-workspace/wifi_latency_test
         run: |
-          west build -p auto -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=${{ matrix.config.overlay }}
+          west build -p -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=${{ matrix.config.overlay }}
 
       - name: Upload build artifacts for ${{ matrix.config.name }}
         uses: actions/upload-artifact@v4
@@ -87,7 +83,7 @@ jobs:
             app-workspace/wifi_latency_test/build/zephyr/zephyr.bin
 
   validate-documentation:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -170,7 +166,13 @@ jobs:
           echo "Python script validation passed ✓"
 
   static-analysis:
-    runs-on: ubuntu-latest
+    needs: set-version
+    runs-on: ubuntu-22.04
+    container: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.set-version.outputs.NCS_VERSION }}
+    defaults:
+      run:
+        # Bash shell is needed to set toolchain related environment variables in docker container
+        shell: bash
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -180,14 +182,8 @@ jobs:
       - name: Prepare west project for style checks
         working-directory: app-workspace
         run: |
-          python3 -m pip install west
           west init -l wifi_latency_test
           west update -o=--depth=1 -n
-        
-      - name: Install analysis tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format perl
           
       - name: Run Zephyr checkpatch
         working-directory: app-workspace
@@ -252,4 +248,76 @@ jobs:
             echo "Code formatting check passed ✓"
           else
             echo "No C/H files found to check"
-          fi 
+          fi
+
+  create-release:
+    needs: [set-version, build-and-test-in-docker, validate-documentation, static-analysis]
+    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display artifact structure
+        run: find artifacts -type f -name "*.hex"
+
+      - name: Create release package
+        run: |
+          mkdir -p release-package
+          
+          # Copy and rename hex files with configuration names
+          for config_dir in artifacts/build-*; do
+            config_name=$(basename "$config_dir" | sed 's/build-//')
+            if [ -f "$config_dir/zephyr.hex" ]; then
+              cp "$config_dir/zephyr.hex" "release-package/wifi-latency-test-${config_name}-${GITHUB_REF_NAME}.hex"
+            fi
+          done
+          
+          # Create a zip archive with all firmware files
+          cd release-package
+          zip -r "../wifi-latency-test-firmware-${GITHUB_REF_NAME}.zip" .
+          cd ..
+          
+          # List created files
+          ls -la release-package/
+          ls -la wifi-latency-test-firmware-*.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: "Wi-Fi Latency Test ${{ github.ref_name }}"
+          body: |
+            ## Wi-Fi Latency Test Firmware Release ${{ github.ref_name }}
+            
+            This release contains pre-compiled firmware for all test configurations:
+            
+            ### Test Configurations Included:
+            - **UDP TX Station** - UDP transmission device in station mode
+            - **UDP RX Station** - UDP reception device in station mode  
+            - **UDP RX SoftAP** - UDP reception device in SoftAP mode
+            - **Raw TX Non-Connected** - Raw packet transmission in non-connected mode
+            - **Raw RX Monitor** - Raw packet reception in monitor mode
+            
+            ### Files:
+            - Individual `.hex` files for each configuration
+            - Complete firmware package: `wifi-latency-test-firmware-${{ github.ref_name }}.zip`
+            
+            ### Hardware Support:
+            - **Target Board**: nRF7002 DK (nrf7002dk/nrf5340/cpuapp)
+            - **NCS Version**: ${{ needs.set-version.outputs.NCS_VERSION }}
+            
+            ### Usage:
+            1. Download the appropriate `.hex` file for your test scenario
+            2. Flash to nRF7002 DK using `west flash` or nRF Connect Programmer
+            3. Refer to [README.md](README.md) for configuration and operation details
+            
+            Built with NCS ${{ needs.set-version.outputs.NCS_VERSION }}
+          files: |
+            release-package/*.hex
+            wifi-latency-test-firmware-*.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
