@@ -2,7 +2,7 @@ name: Build and Test Wi-Fi Latency Application
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, test-build-workflow ]
   pull_request:
     branches: [ main ]
 
