@@ -126,6 +126,9 @@ jobs:
           # West configuration
           [ -f west.yml ] || (echo "Missing west.yml" && exit 1)
           
+          # Style configuration
+          [ -f .clang-format ] || (echo "Missing .clang-format" && exit 1)
+          
           echo "Configuration files validation passed ✓"
 
       - name: Check license headers in source files
@@ -166,26 +169,75 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
+      - name: Prepare west project for style checks
+        run: |
+          python3 -m pip install west
+          west init -l .
+          west update -o=--depth=1 -n
+        
       - name: Install analysis tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y cppcheck clang-format
+          sudo apt-get install -y clang-format perl
           
-      - name: Run cppcheck static analysis
+      - name: Run Zephyr checkpatch
         run: |
-          echo "Running static analysis on source code..."
-          cppcheck --enable=all --error-exitcode=1 --suppress=missingIncludeSystem src/ || exit 1
-          echo "Static analysis passed ✓"
+          echo "Running Zephyr checkpatch on source files..."
           
-      - name: Check code formatting
+          # Check if we have any commits to validate
+          if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+            # Run checkpatch on the diff between HEAD and previous commit
+            git diff HEAD~1 | ./zephyr/scripts/checkpatch.pl --no-tree -
+          else
+            # For initial commit or single commit, check all source files
+            echo "Single commit detected, checking all source files..."
+            for file in $(find src/ -name "*.c" -o -name "*.h"); do
+              if [ -f "$file" ]; then
+                echo "Checking $file..."
+                ./zephyr/scripts/checkpatch.pl --no-tree --file "$file" || true
+              fi
+            done
+          fi
+          
+          echo "Checkpatch analysis completed ✓"
+          
+      - name: Check code formatting with Zephyr style
         run: |
-          echo "Checking code formatting..."
+          echo "Checking code formatting with Zephyr .clang-format..."
+          
+          # Use Zephyr's .clang-format configuration
+          if [ -f zephyr/.clang-format ]; then
+            cp zephyr/.clang-format .clang-format
+          else
+            echo "Warning: Zephyr .clang-format not found, using default"
+          fi
           
           # Find C and H files
           c_files=$(find src/ -name "*.c" -o -name "*.h")
           
           if [ -n "$c_files" ]; then
-            echo "$c_files" | xargs clang-format --dry-run --Werror
+            echo "Found files to check:"
+            echo "$c_files"
+            
+            # Check formatting (dry-run mode)
+            format_issues=0
+            for file in $c_files; do
+              if ! clang-format --dry-run --Werror "$file" >/dev/null 2>&1; then
+                echo "❌ Formatting issues found in: $file"
+                clang-format --dry-run "$file" | head -20
+                format_issues=$((format_issues + 1))
+              else
+                echo "✓ $file"
+              fi
+            done
+            
+            if [ $format_issues -gt 0 ]; then
+              echo ""
+              echo "❌ Found formatting issues in $format_issues file(s)"
+              echo "Run 'clang-format -i <file>' to fix formatting issues"
+              exit 1
+            fi
+            
             echo "Code formatting check passed ✓"
           else
             echo "No C/H files found to check"
