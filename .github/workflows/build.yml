@@ -52,7 +52,7 @@ jobs:
         west build -p auto -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=${{ matrix.config }}
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: build-${{ matrix.config }}
