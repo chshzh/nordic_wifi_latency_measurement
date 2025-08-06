@@ -7,38 +7,26 @@ on:
     branches: [ main ]
 
 jobs:
-  set-image-tag:
+  set-version:
     runs-on: ubuntu-22.04
     outputs:
-      IMAGE_TAG: ${{ steps.set-output.outputs.IMAGE_TAG }}
+      NCS_VERSION: ${{ steps.extract-version.outputs.NCS_VERSION }}
     steps:
-      - name: Checkout wifi latency test repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           path: app-workspace/wifi_latency_test
 
-      - name: Prepare west project
-        working-directory: app-workspace
+      - name: Extract NCS version from west.yml
+        id: extract-version
+        working-directory: app-workspace/wifi_latency_test
         run: |
-          python3 -m pip install west
-          west init -l wifi_latency_test
-          west update -o=--depth=1 -n
-
-      - name: Find toolchain bundle id
-        id: set-output
-        working-directory: app-workspace
-        run: echo "IMAGE_TAG=$(./nrf/scripts/print_toolchain_checksum.sh)" >> $GITHUB_OUTPUT
-      
-      - name: Display GITHUB_OUTPUT content
-        working-directory: app-workspace
-        run: |
-          echo "Contents of GITHUB_OUTPUT:"
-          cat $GITHUB_OUTPUT
+          NCS_VERSION=$(grep 'revision:' west.yml | awk '{print $2}')
+          echo "NCS_VERSION=${NCS_VERSION}" >> $GITHUB_OUTPUT
 
   build-and-test-in-docker:
-    needs: set-image-tag
     runs-on: ubuntu-22.04
-    container: ghcr.io/nrfconnect/sdk-nrf-toolchain:v3.0.2
+    container: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.set-version.outputs.NCS_VERSION }}
     defaults:
       run:
         # Bash shell is needed to set toolchain related environment variables in docker container
@@ -64,7 +52,6 @@ jobs:
           - name: "Raw RX Monitor"
             overlay: "overlay-raw-rx-monitor.conf"
             description: "Raw RX device in monitor mode"
-    
     steps:
       - name: Checkout wifi latency test repository
         uses: actions/checkout@v4
@@ -93,7 +80,7 @@ jobs:
             app-workspace/wifi_latency_test/build/zephyr/zephyr.bin
 
   validate-documentation:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -176,9 +163,8 @@ jobs:
           echo "Python script validation passed ✓"
 
   static-analysis:
-    needs: set-image-tag
-    runs-on: ubuntu-24.04
-    container: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.set-image-tag.outputs.IMAGE_TAG }}
+    runs-on: ubuntu-22.04
+    container: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.set-version.outputs.NCS_VERSION }}
     defaults:
       run:
         # Bash shell is needed to set toolchain related environment variables in docker container
