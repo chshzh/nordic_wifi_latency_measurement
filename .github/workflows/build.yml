@@ -25,6 +25,7 @@ jobs:
           echo "NCS_VERSION=${NCS_VERSION}" >> $GITHUB_OUTPUT
 
   build-and-test-in-docker:
+    needs: set-version
     runs-on: ubuntu-22.04
     container: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.set-version.outputs.NCS_VERSION }}
     defaults:
@@ -80,7 +81,6 @@ jobs:
             app-workspace/wifi_latency_test/build/zephyr/zephyr.bin
 
   validate-documentation:
-    needs: set-version
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
