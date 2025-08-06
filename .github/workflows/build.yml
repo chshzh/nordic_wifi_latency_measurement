@@ -1,4 +1,4 @@
-name: Build and Test
+name: Build and Test Wi-Fi Latency Application
 
 on:
   push:
@@ -7,78 +7,175 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    
+  set-image-tag:
+    runs-on: ubuntu-24.04
+    outputs:
+      IMAGE_TAG: ${{ steps.set-output.outputs.IMAGE_TAG }}
+    steps:
+      - name: Checkout wifi latency test repository
+        uses: actions/checkout@v4
+        with:
+          path: wifi-latency-test
+
+      - name: Prepare west project
+        run: |
+          python3 -m pip install west
+          west init -l wifi-latency-test
+          west update -o=--depth=1 -n nrf
+
+      - name: Find toolchain bundle id
+        id: set-output
+        run: echo "IMAGE_TAG=$(./nrf/scripts/print_toolchain_checksum.sh)" >> $GITHUB_OUTPUT
+
+  build-and-test-in-docker:
+    needs: set-image-tag
+    runs-on: ubuntu-24.04
+    container: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.set-image-tag.outputs.IMAGE_TAG }}
+    defaults:
+      run:
+        # Bash shell is needed to set toolchain related environment variables in docker container
+        # It is a workaround for GitHub Actions limitation https://github.com/actions/runner/issues/1964
+        shell: bash
     strategy:
       matrix:
         config:
-          - overlay-tx.conf
-          - overlay-rx.conf 
-          - overlay-rx-softap.conf
+          # UDP Tests
+          - name: "UDP TX Station"
+            overlay: "overlay-udp-tx-sta.conf"
+            description: "UDP TX device in station mode"
+          - name: "UDP RX Station" 
+            overlay: "overlay-udp-rx-sta.conf"
+            description: "UDP RX device in station mode"
+          - name: "UDP RX SoftAP"
+            overlay: "overlay-udp-rx-softap.conf"
+            description: "UDP RX device in SoftAP mode"
+          # Raw Packet Tests
+          - name: "Raw TX Non-Connected"
+            overlay: "overlay-raw-tx-sta-non-conn.conf"
+            description: "Raw TX device in non-connected mode"
+          - name: "Raw RX Monitor"
+            overlay: "overlay-raw-rx-monitor.conf"
+            description: "Raw RX device in monitor mode"
     
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        path: wifi_udp_latency
+      - name: Checkout wifi latency test repository
+        uses: actions/checkout@v4
+        with:
+          path: wifi-latency-test
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.8'
+      - name: Prepare west project
+        run: |
+          west init -l wifi-latency-test
+          west update -o=--depth=1 -n
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ninja-build gperf ccache dfu-util device-tree-compiler wget
-        pip3 install --user -U west
+      - name: Build ${{ matrix.config.name }}
+        working-directory: wifi-latency-test
+        run: |
+          west build -p auto -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=${{ matrix.config.overlay }}
 
-    - name: Initialize west workspace
-      run: |
-        west init --mr v3.0.2 ncs
-        cd ncs
-        west update
-        west zephyr-export
+      - name: Upload build artifacts for ${{ matrix.config.name }}
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-${{ matrix.config.name }}
+          path: |
+            wifi-latency-test/build/zephyr/zephyr.hex
+            wifi-latency-test/build/zephyr/zephyr.elf
+            wifi-latency-test/build/zephyr/zephyr.bin
 
-    - name: Copy project to workspace
-      run: |
-        cp -r wifi_udp_latency ncs/
-
-    - name: Build project
-      run: |
-        cd ncs/wifi_udp_latency
-        source ../zephyr/zephyr-env.sh
-        west build -p auto -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=${{ matrix.config }}
-
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: build-${{ matrix.config }}
-        path: ncs/wifi_udp_latency/build/
-
-  docs:
+  validate-documentation:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      
-    - name: Validate README
-      run: |
-        # Check if README has required sections
-        grep -q "## Overview" README.md || (echo "Missing Overview section" && exit 1)
-        grep -q "## Hardware Requirements" README.md || (echo "Missing Hardware Requirements section" && exit 1)
-        grep -q "## Quick Start" README.md || (echo "Missing Quick Start section" && exit 1)
-        echo "README validation passed"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Validate README structure
+        run: |
+          # Check if README has required sections as specified in the documentation
+          echo "Validating README.md structure..."
+          
+          # Required sections from the actual README
+          grep -q "🔍 Overview" README.md || (echo "Missing Overview section" && exit 1)
+          grep -q "🎯 Key Features" README.md || (echo "Missing Key Features section" && exit 1)
+          grep -q "🧪 Test Scenarios" README.md || (echo "Missing Test Scenarios section" && exit 1)
+          grep -q "🔧 Hardware Requirements" README.md || (echo "Missing Hardware Requirements section" && exit 1)
+          grep -q "🚀 Quick Start Guide" README.md || (echo "Missing Quick Start Guide section" && exit 1)
+          grep -q "⚙️ Configuration Guide" README.md || (echo "Missing Configuration Guide section" && exit 1)
+          grep -q "🎮 Operation Guide" README.md || (echo "Missing Operation Guide section" && exit 1)
+          grep -q "📏 Precision Timing Measurement" README.md || (echo "Missing Precision Timing Measurement section" && exit 1)
+          grep -q "📊 Test Results and Performance Analysis" README.md || (echo "Missing Test Results section" && exit 1)
+          
+          echo "README.md validation passed ✓"
 
-    - name: Check license headers
-      run: |
-        # Check that source files have proper license headers
-        find src/ -name "*.c" -exec grep -l "SPDX-License-Identifier: LicenseRef-Nordic-5-Clause" {} \; | wc -l > /tmp/licensed_files
-        find src/ -name "*.c" | wc -l > /tmp/total_files
-        if [ "$(cat /tmp/licensed_files)" -ne "$(cat /tmp/total_files)" ]; then
-          echo "Some C files missing license headers"
-          exit 1
-        fi
-        echo "License header validation passed" 
+      - name: Validate configuration files exist
+        run: |
+          echo "Checking overlay configuration files..."
+          
+          # UDP configurations
+          [ -f overlay-udp-tx-sta.conf ] || (echo "Missing overlay-udp-tx-sta.conf" && exit 1)
+          [ -f overlay-udp-rx-sta.conf ] || (echo "Missing overlay-udp-rx-sta.conf" && exit 1)
+          [ -f overlay-udp-rx-softap.conf ] || (echo "Missing overlay-udp-rx-softap.conf" && exit 1)
+          
+          # Raw packet configurations
+          [ -f overlay-raw-tx-sta-non-conn.conf ] || (echo "Missing overlay-raw-tx-sta-non-conn.conf" && exit 1)
+          [ -f overlay-raw-rx-monitor.conf ] || (echo "Missing overlay-raw-rx-monitor.conf" && exit 1)
+          
+          # Base configuration
+          [ -f prj.conf ] || (echo "Missing prj.conf" && exit 1)
+          
+          echo "Configuration files validation passed ✓"
+
+      - name: Check license headers in source files
+        run: |
+          echo "Validating license headers..."
+          
+          # Check that source files have proper license headers
+          missing_headers=0
+          
+          for file in $(find src/ -name "*.c" -o -name "*.h"); do
+            if ! grep -q "SPDX-License-Identifier: LicenseRef-Nordic-5-Clause" "$file"; then
+              echo "Missing license header in: $file"
+              missing_headers=$((missing_headers + 1))
+            fi
+          done
+          
+          if [ $missing_headers -gt 0 ]; then
+            echo "❌ $missing_headers files missing license headers"
+            exit 1
+          fi
+          
+          echo "License header validation passed ✓"
+
+      - name: Validate Python analysis script
+        run: |
+          echo "Checking PPK2 analysis script..."
+          
+          [ -f script/ppk_record_analysis.py ] || (echo "Missing PPK2 analysis script" && exit 1)
+          
+          # Basic syntax check
+          python3 -m py_compile script/ppk_record_analysis.py || (echo "PPK2 analysis script has syntax errors" && exit 1)
+          
+          echo "Python script validation passed ✓"
+
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Install analysis tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck clang-format
+          
+      - name: Run cppcheck static analysis
+        run: |
+          echo "Running static analysis on source code..."
+          cppcheck --enable=all --error-exitcode=1 --suppress=missingIncludeSystem src/ || exit 1
+          echo "Static analysis passed ✓"
+          
+      - name: Check code formatting
+        run: |
+          echo "Checking code formatting..."
+          find src/ -name "*.c" -o -name "*.h" | xargs clang-format --dry-run --Werror
+          echo "Code formatting check passed ✓" 
