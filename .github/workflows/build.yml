@@ -15,16 +15,18 @@ jobs:
       - name: Checkout wifi latency test repository
         uses: actions/checkout@v4
         with:
-          path: wifi-latency-test
+          path: app-workspace/wifi_latency_test
 
       - name: Prepare west project
+        working-directory: app-workspace
         run: |
           python3 -m pip install west
-          west init -l wifi-latency-test
-          west update -o=--depth=1 -n nrf
+          west init -l wifi_latency_test
+          west update -o=--depth=1 -n
 
       - name: Find toolchain bundle id
         id: set-output
+        working-directory: app-workspace
         run: echo "IMAGE_TAG=$(./nrf/scripts/print_toolchain_checksum.sh)" >> $GITHUB_OUTPUT
 
   build-and-test-in-docker:
@@ -61,15 +63,16 @@ jobs:
       - name: Checkout wifi latency test repository
         uses: actions/checkout@v4
         with:
-          path: wifi-latency-test
+          path: app-workspace/wifi_latency_test
 
       - name: Prepare west project
+        working-directory: app-workspace
         run: |
-          west init -l wifi-latency-test
+          west init -l wifi_latency_test
           west update -o=--depth=1 -n
 
       - name: Build ${{ matrix.config.name }}
-        working-directory: wifi-latency-test
+        working-directory: app-workspace/wifi_latency_test
         run: |
           west build -p auto -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=${{ matrix.config.overlay }}
 
@@ -79,17 +82,20 @@ jobs:
         with:
           name: build-${{ matrix.config.name }}
           path: |
-            wifi-latency-test/build/zephyr/zephyr.hex
-            wifi-latency-test/build/zephyr/zephyr.elf
-            wifi-latency-test/build/zephyr/zephyr.bin
+            app-workspace/wifi_latency_test/build/zephyr/zephyr.hex
+            app-workspace/wifi_latency_test/build/zephyr/zephyr.elf
+            app-workspace/wifi_latency_test/build/zephyr/zephyr.bin
 
   validate-documentation:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          path: app-workspace/wifi_latency_test
         
       - name: Validate README structure
+        working-directory: app-workspace/wifi_latency_test
         run: |
           # Check if README has required sections as specified in the documentation
           echo "Validating README.md structure..."
@@ -108,6 +114,7 @@ jobs:
           echo "README.md validation passed ✓"
 
       - name: Validate configuration files exist
+        working-directory: app-workspace/wifi_latency_test
         run: |
           echo "Checking overlay configuration files..."
           
@@ -129,6 +136,7 @@ jobs:
           echo "Configuration files validation passed ✓"
 
       - name: Check license headers in source files
+        working-directory: app-workspace/wifi_latency_test
         run: |
           echo "Validating license headers..."
           
@@ -150,6 +158,7 @@ jobs:
           echo "License header validation passed ✓"
 
       - name: Validate Python analysis script
+        working-directory: app-workspace/wifi_latency_test
         run: |
           echo "Checking PPK2 analysis script..."
           
@@ -165,11 +174,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          path: app-workspace/wifi_latency_test
         
       - name: Prepare west project for style checks
+        working-directory: app-workspace
         run: |
           python3 -m pip install west
-          west init -l .
+          west init -l wifi_latency_test
           west update -o=--depth=1 -n
         
       - name: Install analysis tools
@@ -178,17 +190,18 @@ jobs:
           sudo apt-get install -y clang-format perl
           
       - name: Run Zephyr checkpatch
+        working-directory: app-workspace
         run: |
           echo "Running Zephyr checkpatch on source files..."
           
           # Check if we have any commits to validate
           if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
             # Run checkpatch on the diff between HEAD and previous commit
-            git diff HEAD~1 | ./zephyr/scripts/checkpatch.pl --no-tree -
+            cd wifi_latency_test && git diff HEAD~1 | ../zephyr/scripts/checkpatch.pl --no-tree -
           else
             # For initial commit or single commit, check all source files
             echo "Single commit detected, checking all source files..."
-            for file in $(find src/ -name "*.c" -o -name "*.h"); do
+            for file in $(find wifi_latency_test/src/ -name "*.c" -o -name "*.h"); do
               if [ -f "$file" ]; then
                 echo "Checking $file..."
                 ./zephyr/scripts/checkpatch.pl --no-tree --file "$file" || true
@@ -199,18 +212,19 @@ jobs:
           echo "Checkpatch analysis completed ✓"
           
       - name: Check code formatting with Zephyr style
+        working-directory: app-workspace
         run: |
           echo "Checking code formatting with Zephyr .clang-format..."
           
           # Use Zephyr's .clang-format configuration
           if [ -f zephyr/.clang-format ]; then
-            cp zephyr/.clang-format .clang-format
+            cp zephyr/.clang-format wifi_latency_test/.clang-format
           else
-            echo "Warning: Zephyr .clang-format not found, using default"
+            echo "Warning: Zephyr .clang-format not found, using project default"
           fi
           
           # Find C and H files
-          c_files=$(find src/ -name "*.c" -o -name "*.h")
+          c_files=$(find wifi_latency_test/src/ -name "*.c" -o -name "*.h")
           
           if [ -n "$c_files" ]; then
             echo "Found files to check:"

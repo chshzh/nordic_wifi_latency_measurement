@@ -3,7 +3,7 @@
 
 manifest:
   self:
-    west-commands: scripts/west-commands.yml
+    path: wifi_latency_test
 
   remotes:
     - name: ncs
