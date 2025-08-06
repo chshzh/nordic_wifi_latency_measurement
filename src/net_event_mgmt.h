@@ -14,11 +14,11 @@
 
 /**
  * @brief Initialize network event handlers
- * 
+ *
  * Sets up all network management event callbacks for different layers
- * 
+ *
  * @return 0 on success, negative error code on failure
  */
 int init_network_events(void);
- 
+
 #endif /* NET_MGMT_H */

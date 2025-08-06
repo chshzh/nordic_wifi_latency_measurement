@@ -62,13 +62,12 @@ int wifi_set_channel(int channel)
 
 	if ((channel_info.channel < WIFI_CHANNEL_MIN) ||
 	    (channel_info.channel > WIFI_CHANNEL_MAX)) {
-		LOG_ERR("Invalid channel number: %d. Range is (%d-%d)",
-			channel, WIFI_CHANNEL_MIN, WIFI_CHANNEL_MAX);
+		LOG_ERR("Invalid channel number: %d. Range is (%d-%d)", channel, WIFI_CHANNEL_MIN,
+			WIFI_CHANNEL_MAX);
 		return -EINVAL;
 	}
 
-	ret = net_mgmt(NET_REQUEST_WIFI_CHANNEL, iface,
-		       &channel_info, sizeof(channel_info));
+	ret = net_mgmt(NET_REQUEST_WIFI_CHANNEL, iface, &channel_info, sizeof(channel_info));
 	if (ret) {
 		LOG_ERR("Channel setting failed: %d", ret);
 		return ret;
@@ -97,7 +96,6 @@ int wifi_set_tx_injection_mode(void)
 	return 0;
 }
 
-
 #if IS_ENABLED(CONFIG_UDP_RX_DEV_MODE_SOFTAP) || IS_ENABLED(CONFIG_RAW_RX_DEV_MODE_MONITOR)
 int wifi_set_reg_domain(void)
 {
@@ -115,8 +113,7 @@ int wifi_set_reg_domain(void)
 	strncpy(regd.country_code, CONFIG_WIFI_LATENCY_TEST_REG_DOMAIN,
 		(WIFI_COUNTRY_CODE_LEN + 1));
 
-	ret = net_mgmt(NET_REQUEST_WIFI_REG_DOMAIN, iface,
-		       &regd, sizeof(regd));
+	ret = net_mgmt(NET_REQUEST_WIFI_REG_DOMAIN, iface, &regd, sizeof(regd));
 	if (ret) {
 		LOG_ERR("Cannot %s Regulatory domain: %d", "SET", ret);
 	} else {
@@ -130,88 +127,87 @@ int wifi_set_reg_domain(void)
 #if IS_ENABLED(CONFIG_UDP_RX_DEV_MODE_SOFTAP)
 int wifi_setup_softap(const char *ssid, const char *psk)
 {
-    struct net_if *iface;
-    struct wifi_connect_req_params params = {0};
-    int ret;
+	struct net_if *iface;
+	struct wifi_connect_req_params params = {0};
+	int ret;
 
-    iface = net_if_get_first_wifi();
-    if (!iface) {
-        LOG_ERR("Failed to get Wi-Fi interface");
-        return -1;
-    }
-    
-    /* Configure AP parameters */
-    params.ssid = (uint8_t *)ssid;
+	iface = net_if_get_first_wifi();
+	if (!iface) {
+		LOG_ERR("Failed to get Wi-Fi interface");
+		return -1;
+	}
+
+	/* Configure AP parameters */
+	params.ssid = (uint8_t *)ssid;
 	params.ssid_length = strlen(params.ssid);
 	if (params.ssid_length > WIFI_SSID_MAX_LEN) {
 		LOG_ERR("SSID length is too long, expected is %d characters long",
 			WIFI_SSID_MAX_LEN);
 		return -1;
 	}
-    params.psk = (uint8_t *)psk;
-    params.psk_length = strlen(params.psk);
-    params.band = WIFI_FREQ_BAND_2_4_GHZ;
-    params.channel = 1;
-    params.security = WIFI_SECURITY_TYPE_PSK;
+	params.psk = (uint8_t *)psk;
+	params.psk_length = strlen(params.psk);
+	params.band = WIFI_FREQ_BAND_2_4_GHZ;
+	params.channel = 1;
+	params.security = WIFI_SECURITY_TYPE_PSK;
 
-    /* Enable AP mode */
+	/* Enable AP mode */
 	ret = net_mgmt(NET_REQUEST_WIFI_AP_ENABLE, iface, &params,
-        sizeof(struct wifi_connect_req_params));
-    if (ret) {
-    LOG_ERR("AP mode enable failed: %s", strerror(-ret));
-    } else {
-    LOG_INF("AP mode enabled");
-    }
+		       sizeof(struct wifi_connect_req_params));
+	if (ret) {
+		LOG_ERR("AP mode enable failed: %s", strerror(-ret));
+	} else {
+		LOG_INF("AP mode enabled");
+	}
 
-    return 0;
+	return 0;
 }
 #endif /* CONFIG_UDP_RX_DEV_MODE_SOFTAP */
 
 int wifi_print_status(void)
 {
-    struct net_if *iface;
-    struct wifi_iface_status status = {0};
-    int ret;
+	struct net_if *iface;
+	struct wifi_iface_status status = {0};
+	int ret;
 
-    iface = net_if_get_first_wifi();
-    if (!iface) {
-        LOG_ERR("Failed to get Wi-Fi interface");
-        return -ENODEV;
-    }
+	iface = net_if_get_first_wifi();
+	if (!iface) {
+		LOG_ERR("Failed to get Wi-Fi interface");
+		return -ENODEV;
+	}
 
-    ret = net_mgmt(NET_REQUEST_WIFI_IFACE_STATUS, iface, &status,
-                   sizeof(struct wifi_iface_status));
-    if (ret) {
-        LOG_ERR("Status request failed: %d", ret);
-        return ret;
-    }
+	ret = net_mgmt(NET_REQUEST_WIFI_IFACE_STATUS, iface, &status,
+		       sizeof(struct wifi_iface_status));
+	if (ret) {
+		LOG_ERR("Status request failed: %d", ret);
+		return ret;
+	}
 
-    LOG_INF("Wi-Fi Status: successful");
-    LOG_INF("==================");
-    LOG_INF("State: %s", wifi_state_txt(status.state));
+	LOG_INF("Wi-Fi Status: successful");
+	LOG_INF("==================");
+	LOG_INF("State: %s", wifi_state_txt(status.state));
 
-    if (status.state >= WIFI_STATE_ASSOCIATED) {
-        LOG_INF("Interface Mode: %s", wifi_mode_txt(status.iface_mode));
-        LOG_INF("SSID: %.32s", status.ssid);
-        LOG_INF("BSSID: %02x:%02x:%02x:%02x:%02x:%02x",
-               status.bssid[0], status.bssid[1], status.bssid[2],
-               status.bssid[3], status.bssid[4], status.bssid[5]);
-        LOG_INF("Band: %s", wifi_band_txt(status.band));
-        LOG_INF("Channel: %d", status.channel);
-        LOG_INF("Security: %s", wifi_security_txt(status.security));
-        LOG_INF("RSSI: %d dBm", status.rssi);
-    }
+	if (status.state >= WIFI_STATE_ASSOCIATED) {
+		LOG_INF("Interface Mode: %s", wifi_mode_txt(status.iface_mode));
+		LOG_INF("SSID: %.32s", status.ssid);
+		LOG_INF("BSSID: %02x:%02x:%02x:%02x:%02x:%02x", status.bssid[0], status.bssid[1],
+			status.bssid[2], status.bssid[3], status.bssid[4], status.bssid[5]);
+		LOG_INF("Band: %s", wifi_band_txt(status.band));
+		LOG_INF("Channel: %d", status.channel);
+		LOG_INF("Security: %s", wifi_security_txt(status.security));
+		LOG_INF("RSSI: %d dBm", status.rssi);
+	}
 
-    return 0;
+	return 0;
 }
 
 void wifi_print_dhcp_ip(struct net_mgmt_event_callback *cb)
 {
-    /* Get DHCP info from struct net_if_dhcpv4 and print */
-    const struct net_if_dhcpv4 *dhcpv4 = cb->info;
-    const struct in_addr *addr = &dhcpv4->requested_ip;
-    char dhcp_info[128];
-    
-    net_addr_ntop(AF_INET, addr, dhcp_info, sizeof(dhcp_info));
-    LOG_INF("\r\n\r\nDevice IP address: %s\r\n", dhcp_info);
+	/* Get DHCP info from struct net_if_dhcpv4 and print */
+	const struct net_if_dhcpv4 *dhcpv4 = cb->info;
+	const struct in_addr *addr = &dhcpv4->requested_ip;
+	char dhcp_info[128];
+
+	net_addr_ntop(AF_INET, addr, dhcp_info, sizeof(dhcp_info));
+	LOG_INF("\r\n\r\nDevice IP address: %s\r\n", dhcp_info);
 }

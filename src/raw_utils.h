@@ -40,23 +40,23 @@ struct beacon_frame {
 
 /* Frame control structure for parsing received frames */
 typedef struct {
-	uint16_t protocolVersion : 2;
-	uint16_t type            : 2;
-	uint16_t subtype         : 4;
-	uint16_t toDS            : 1;
-	uint16_t fromDS          : 1;
-	uint16_t moreFragments   : 1;
-	uint16_t retry           : 1;
-	uint16_t powerManagement : 1;
-	uint16_t moreData        : 1;
-	uint16_t protectedFrame  : 1;
-	uint16_t order           : 1;
+	uint16_t protocolVersion: 2;
+	uint16_t type: 2;
+	uint16_t subtype: 4;
+	uint16_t toDS: 1;
+	uint16_t fromDS: 1;
+	uint16_t moreFragments: 1;
+	uint16_t retry: 1;
+	uint16_t powerManagement: 1;
+	uint16_t moreData: 1;
+	uint16_t protectedFrame: 1;
+	uint16_t order: 1;
 } frame_control_t;
 
 /* Packet statistics structure */
 typedef struct {
 	int beacon_count;
-	int test_beacon_count;  /* Beacons from our test application */
+	int test_beacon_count; /* Beacons from our test application */
 	int data_count;
 	int total_count;
 	int64_t first_packet_timestamp;
@@ -65,21 +65,21 @@ typedef struct {
 
 /**
  * @brief Initialize raw packet transmission
- * 
+ *
  * @return 0 on success, negative error code on failure
  */
 int raw_tx_init(void);
 
 /**
  * @brief Initialize raw packet reception in monitor mode
- * 
+ *
  * @return 0 on success, negative error code on failure
  */
 int raw_tx_socket_init(void);
 
 /**
  * @brief Send a raw packet with timing measurement
- * 
+ *
  * @param packet_num Packet sequence number for identification
  * @return 0 on success, negative error code on failure
  */
@@ -92,35 +92,35 @@ void raw_tx_cleanup(void);
 
 /**
  * @brief Initialize raw packet reception (monitor mode)
- * 
+ *
  * @return 0 on success, negative error code on failure
  */
 int raw_rx_dev_monitor_init(void);
 
 /**
  * @brief Initialize raw packet reception (promiscuous mode)
- * 
+ *
  * @return 0 on success, negative error code on failure
  */
 int raw_rx_dev_promiscuous_init(void);
 
 /**
  * @brief Main raw packet RX task function (monitor mode)
- * 
+ *
  * This function runs the main reception loop for raw packets in monitor mode
  */
 void raw_rx_dev_monitor_task(void);
 
 /**
  * @brief Main raw packet RX task function (promiscuous mode)
- * 
+ *
  * This function runs the main reception loop for raw packets in promiscuous mode
  */
 void raw_rx_dev_promiscuous_task(void);
 
 /**
  * @brief Parse received raw packet and extract timing information
- * 
+ *
  * @param packet Pointer to the received packet data
  * @param packet_len Length of the received packet
  * @param stats Pointer to statistics structure to update
@@ -130,7 +130,7 @@ int raw_parse_packet(unsigned char *packet, int packet_len, raw_packet_stats_t *
 
 /**
  * @brief Check if a packet is from our test application
- * 
+ *
  * @param packet Pointer to the packet data
  * @param packet_len Length of the packet
  * @return true if it's our test packet, false otherwise

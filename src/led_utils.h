@@ -11,14 +11,14 @@
 
 /**
  * @brief Initialize LED functionality
- * 
+ *
  * @return 0 on success, negative error code on failure
  */
 int led_init(void);
 
 /**
  * @brief Set network status (logging only - no LED indication)
- * 
+ *
  * @param connected true if network is connected, false otherwise
  */
 void led_set_network_status(bool connected);
@@ -33,4 +33,4 @@ void led_trigger_tx(void);
  */
 void led_trigger_rx(void);
 
-#endif /* LED_UTILS_H */ 
+#endif /* LED_UTILS_H */
