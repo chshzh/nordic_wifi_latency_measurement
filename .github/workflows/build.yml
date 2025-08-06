@@ -21,7 +21,7 @@ jobs:
         run: |
           python3 -m pip install west
           west init -l wifi-latency-test
-          west update -o=--depth=1 -n nrf
+          west update -o=--depth=1 -n
 
       - name: Find toolchain bundle id
         id: set-output
@@ -123,6 +123,9 @@ jobs:
           # Base configuration
           [ -f prj.conf ] || (echo "Missing prj.conf" && exit 1)
           
+          # West configuration
+          [ -f west.yml ] || (echo "Missing west.yml" && exit 1)
+          
           echo "Configuration files validation passed ✓"
 
       - name: Check license headers in source files
@@ -177,5 +180,13 @@ jobs:
       - name: Check code formatting
         run: |
           echo "Checking code formatting..."
-          find src/ -name "*.c" -o -name "*.h" | xargs clang-format --dry-run --Werror
-          echo "Code formatting check passed ✓" 
+          
+          # Find C and H files
+          c_files=$(find src/ -name "*.c" -o -name "*.h")
+          
+          if [ -n "$c_files" ]; then
+            echo "$c_files" | xargs clang-format --dry-run --Werror
+            echo "Code formatting check passed ✓"
+          else
+            echo "No C/H files found to check"
+          fi 
