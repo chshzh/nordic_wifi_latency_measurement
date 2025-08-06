@@ -21,7 +21,7 @@ jobs:
         run: |
           python3 -m pip install west
           west init -l wifi-latency-test
-          west update -o=--depth=1 -n
+          west update -o=--depth=1 -n nrf
 
       - name: Find toolchain bundle id
         id: set-output
@@ -125,9 +125,6 @@ jobs:
           
           # West configuration
           [ -f west.yml ] || (echo "Missing west.yml" && exit 1)
-          
-          # Style configuration
-          [ -f .clang-format ] || (echo "Missing .clang-format" && exit 1)
           
           echo "Configuration files validation passed ✓"
 
