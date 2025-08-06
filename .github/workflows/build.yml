@@ -78,9 +78,7 @@ jobs:
         with:
           name: build-${{ matrix.config.name }}
           path: |
-            app-workspace/wifi_latency_test/build/zephyr/zephyr.hex
-            app-workspace/wifi_latency_test/build/zephyr/zephyr.elf
-            app-workspace/wifi_latency_test/build/zephyr/zephyr.bin
+            app-workspace/wifi_latency_test/build/merged.hex
 
   validate-documentation:
     runs-on: ubuntu-22.04
@@ -269,9 +267,9 @@ jobs:
           
           # Copy and rename hex files with configuration names
           for config_dir in artifacts/build-*; do
-            config_name=$(basename "$config_dir" | sed 's/build-//')
-            if [ -f "$config_dir/zephyr.hex" ]; then
-              cp "$config_dir/zephyr.hex" "release-package/wifi-latency-test-${config_name}-${GITHUB_REF_NAME}.hex"
+            config_name=$(basename "$config_dir" | sed 's/build-//' | sed 's/ /-/g')
+            if [ -f "$config_dir/merged.hex" ]; then
+              cp "$config_dir/merged.hex" "release-package/wifi-latency-test-${config_name}-${GITHUB_REF_NAME}.hex"
             fi
           done
           
@@ -290,6 +288,8 @@ jobs:
           name: "Wi-Fi Latency Test ${{ github.ref_name }}"
           body: |
             ## Wi-Fi Latency Test Firmware Release ${{ github.ref_name }}
+            
+            > **Note**: This release tag (${{ github.ref_name }}) corresponds to the NCS version (${{ needs.set-version.outputs.NCS_VERSION }}) used for building the firmware.
             
             This release contains pre-compiled firmware for all test configurations:
             
