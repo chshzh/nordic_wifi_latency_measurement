@@ -1,4 +1,4 @@
-name: Build and Test Wi-Fi Latency Application
+name: "Build & Release"
 
 on:
   push:
@@ -10,25 +10,25 @@ on:
 
 jobs:
   set-version:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     outputs:
       NCS_VERSION: ${{ steps.extract-version.outputs.NCS_VERSION }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          path: app-workspace/wifi_latency_test
+          path: app-workspace/wifi_latency_meas
 
       - name: Extract NCS version from west.yml
         id: extract-version
-        working-directory: app-workspace/wifi_latency_test
+        working-directory: app-workspace/wifi_latency_meas
         run: |
           NCS_VERSION=$(grep 'revision:' west.yml | awk '{print $2}')
           echo "NCS_VERSION=${NCS_VERSION}" >> $GITHUB_OUTPUT
 
   build-and-test-in-docker:
     needs: set-version
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.set-version.outputs.NCS_VERSION }}
     defaults:
       run:
@@ -59,16 +59,16 @@ jobs:
       - name: Checkout wifi latency test repository
         uses: actions/checkout@v4
         with:
-          path: app-workspace/wifi_latency_test
+          path: app-workspace/wifi_latency_meas
 
       - name: Prepare west project
         working-directory: app-workspace
         run: |
-          west init -l wifi_latency_test
+          west init -l wifi_latency_meas
           west update -o=--depth=1 -n
 
       - name: Build ${{ matrix.config.name }}
-        working-directory: app-workspace/wifi_latency_test
+        working-directory: app-workspace/wifi_latency_meas
         run: |
           west build -p -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=${{ matrix.config.overlay }}
 
@@ -78,18 +78,18 @@ jobs:
         with:
           name: build-${{ matrix.config.name }}
           path: |
-            app-workspace/wifi_latency_test/build/merged.hex
+            app-workspace/wifi_latency_meas/build/merged.hex
 
   validate-documentation:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          path: app-workspace/wifi_latency_test
+          path: app-workspace/wifi_latency_meas
         
       - name: Validate README structure
-        working-directory: app-workspace/wifi_latency_test
+        working-directory: app-workspace/wifi_latency_meas
         run: |
           # Check if README has required sections as specified in the documentation
           echo "Validating README.md structure..."
@@ -108,7 +108,7 @@ jobs:
           echo "README.md validation passed ✓"
 
       - name: Validate configuration files exist
-        working-directory: app-workspace/wifi_latency_test
+        working-directory: app-workspace/wifi_latency_meas
         run: |
           echo "Checking overlay configuration files..."
           
@@ -130,7 +130,7 @@ jobs:
           echo "Configuration files validation passed ✓"
 
       - name: Check license headers in source files
-        working-directory: app-workspace/wifi_latency_test
+        working-directory: app-workspace/wifi_latency_meas
         run: |
           echo "Validating license headers..."
           
@@ -152,7 +152,7 @@ jobs:
           echo "License header validation passed ✓"
 
       - name: Validate Python analysis script
-        working-directory: app-workspace/wifi_latency_test
+        working-directory: app-workspace/wifi_latency_meas
         run: |
           echo "Checking PPK2 analysis script..."
           
@@ -165,7 +165,7 @@ jobs:
 
   static-analysis:
     needs: set-version
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.set-version.outputs.NCS_VERSION }}
     defaults:
       run:
@@ -175,12 +175,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          path: app-workspace/wifi_latency_test
+          path: app-workspace/wifi_latency_meas
         
       - name: Prepare west project for style checks
         working-directory: app-workspace
         run: |
-          west init -l wifi_latency_test
+          west init -l wifi_latency_meas
           west update -o=--depth=1 -n
           
       - name: Run Zephyr checkpatch
@@ -191,11 +191,11 @@ jobs:
           # Check if we have any commits to validate
           if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
             # Run checkpatch on the diff between HEAD and previous commit
-            cd wifi_latency_test && git diff HEAD~1 | ../zephyr/scripts/checkpatch.pl --no-tree -
+            cd wifi_latency_meas && git diff HEAD~1 | ../zephyr/scripts/checkpatch.pl --no-tree -
           else
             # For initial commit or single commit, check all source files
             echo "Single commit detected, checking all source files..."
-            for file in $(find wifi_latency_test/src/ -name "*.c" -o -name "*.h"); do
+            for file in $(find wifi_latency_meas/src/ -name "*.c" -o -name "*.h"); do
               if [ -f "$file" ]; then
                 echo "Checking $file..."
                 ./zephyr/scripts/checkpatch.pl --no-tree --file "$file" || true
@@ -212,13 +212,13 @@ jobs:
           
           # Use Zephyr's .clang-format configuration
           if [ -f zephyr/.clang-format ]; then
-            cp zephyr/.clang-format wifi_latency_test/.clang-format
+            cp zephyr/.clang-format wifi_latency_meas/.clang-format
           else
             echo "Warning: Zephyr .clang-format not found, using project default"
           fi
           
           # Find C and H files
-          c_files=$(find wifi_latency_test/src/ -name "*.c" -o -name "*.h")
+          c_files=$(find wifi_latency_meas/src/ -name "*.c" -o -name "*.h")
           
           if [ -n "$c_files" ]; then
             echo "Found files to check:"
@@ -250,7 +250,7 @@ jobs:
 
   create-release:
     needs: [set-version, build-and-test-in-docker, validate-documentation, static-analysis]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Download all build artifacts
@@ -269,25 +269,25 @@ jobs:
           for config_dir in artifacts/build-*; do
             config_name=$(basename "$config_dir" | sed 's/build-//' | sed 's/ /-/g')
             if [ -f "$config_dir/merged.hex" ]; then
-              cp "$config_dir/merged.hex" "release-package/wifi-latency-test-${config_name}-${GITHUB_REF_NAME}.hex"
+              cp "$config_dir/merged.hex" "release-package/wifi-latency-meas-${config_name}-${GITHUB_REF_NAME}.hex"
             fi
           done
           
           # Create a zip archive with all firmware files
           cd release-package
-          zip -r "../wifi-latency-test-firmware-${GITHUB_REF_NAME}.zip" .
+          zip -r "../wifi-latency-meas-firmware-ncs${GITHUB_REF_NAME}.zip" .
           cd ..
           
           # List created files
           ls -la release-package/
-          ls -la wifi-latency-test-firmware-*.zip
+          ls -la wifi-latency-meas-firmware-ncs*.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          name: "Wi-Fi Latency Test ${{ github.ref_name }}"
+          name: "Nordic Wi-Fi Latency Measurement ${{ github.ref_name }}"
           body: |
-            ## Wi-Fi Latency Test Firmware Release ${{ github.ref_name }}
+            ## Nordic Wi-Fi Latency Measurement Firmware Release ${{ github.ref_name }}
             
             > **Note**: This release tag (${{ github.ref_name }}) corresponds to the NCS version (${{ needs.set-version.outputs.NCS_VERSION }}) used for building the firmware.
             
@@ -302,7 +302,7 @@ jobs:
             
             ### Files:
             - Individual `.hex` files for each configuration
-            - Complete firmware package: `wifi-latency-test-firmware-${{ github.ref_name }}.zip`
+            - Complete firmware package: `wifi-latency-meas-firmware-ncs${{ github.ref_name }}.zip`
             
             ### Hardware Support:
             - **Target Board**: nRF7002 DK (nrf7002dk/nrf5340/cpuapp)
@@ -316,7 +316,7 @@ jobs:
             Built with NCS ${{ needs.set-version.outputs.NCS_VERSION }}
           files: |
             release-package/*.hex
-            wifi-latency-test-firmware-*.zip
+            wifi-latency-meas-firmware-ncs*.zip
           draft: false
           prerelease: false
         env:
