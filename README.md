@@ -96,7 +96,7 @@ wifi_latency_test/
 │   ├── udp_utils.c/.h              # UDP socket communication and packet handling
 │   ├── raw_utils.c/.h              # Raw IEEE 802.11 packet transmission/reception
 │   ├── led_utils.c/.h              # GPIO timing triggers and LED control
-│   └── net_event_mgmt.c/.h         # Network event handling and synchronization
+│   └── net_event_mgmt_utils.c/.h         # Network event handling and synchronization
 ├── script/
 │   └── ppk_record_analysis.py      # PPK2 data analysis and latency calculation
 ├── overlay-udp-tx-sta.conf         # UDP TX device (Station mode)
@@ -117,7 +117,7 @@ wifi_latency_test/
 - **`udp_utils`**: Implements UDP socket communication for both TX and RX operations
 - **`raw_utils`**: Handles raw IEEE 802.11 packet creation, injection, and monitoring
 - **`led_utils`**: Manages GPIO timing triggers synchronized with packet events
-- **`net_event_mgmt`**: Processes network events and provides synchronization primitives
+- **`net_event_mgmt_utils`**: Processes network events and provides synchronization primitives
 
 ## 🚀 Quick Start Guide
 
@@ -211,8 +211,8 @@ CONFIG_UDP_TX_DEV_TARGET_IP="192.168.1.100"  # IP address of RX device
 #### Test 3: SoftAP Mode
 **RX Device** (`overlay-udp-rx-softap.conf`) - Creates access point:
 ```properties
-CONFIG_UDP_RX_DEV_MODE_SOFTAP_SSID="wifi-latency-test"
-CONFIG_UDP_RX_DEV_MODE_SOFTAP_PSK="testpass123"
+CONFIG_SOFTAP_SSID="wifi-latency-test"
+CONFIG_SOFTAP_PASSWORD="testpass123"
 ```
 
 **TX Device** (`overlay-udp-tx-sta.conf`) - Connects to SoftAP:

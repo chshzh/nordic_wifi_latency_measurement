@@ -17,19 +17,19 @@
 #include <zephyr/net/wifi_mgmt.h>
 
 #include "led_utils.h"
-#include "net_event_mgmt.h"
+#include "net_event_mgmt_utils.h"
 #include "raw_utils.h"
 #include "udp_utils.h"
 #include "wifi_utils.h"
 
 LOG_MODULE_REGISTER(main, CONFIG_LOG_DEFAULT_LEVEL);
 
-/* External semaphores from net_event_mgmt.c */
+/* External semaphores from net_event_mgmt_utils.c */
 extern struct k_sem iface_up_sem;
 extern struct k_sem wpa_supplicant_ready_sem;
 extern struct k_sem ipv4_dhcp_bond_sem;
 
-/* External semaphore from net_event_mgmt.c for SoftAP mode */
+/* External semaphore from net_event_mgmt_utils.c for SoftAP mode */
 #if IS_ENABLED(CONFIG_UDP_RX_DEV_MODE_SOFTAP)
 extern struct k_sem station_connected_sem;
 extern bool dhcp_server_started;
@@ -62,78 +62,6 @@ static void button_handler(uint32_t button_state, uint32_t has_changed)
 	}
 }
 #endif /* CONFIG_WIFI_LATENCY_TEST_DEVICE_ROLE_TX */
-
-#if IS_ENABLED(CONFIG_UDP_RX_DEV_MODE_SOFTAP)
-static int setup_dhcp_server(void)
-{
-	struct net_if *iface;
-	struct in_addr pool_start;
-	int ret;
-
-	if (dhcp_server_started) {
-		LOG_WRN("DHCP server already started");
-		return 0;
-	}
-
-	iface = net_if_get_first_wifi();
-	if (!iface) {
-		LOG_ERR("Failed to get Wi-Fi interface");
-		return -1;
-	}
-
-	/* Set DHCP pool start address */
-	ret = inet_pton(AF_INET, "192.168.1.2", &pool_start);
-	if (ret != 1) {
-		LOG_ERR("Invalid DHCP pool start address");
-		return -1;
-	}
-
-	ret = net_dhcpv4_server_start(iface, &pool_start);
-	if (ret == -EALREADY) {
-		LOG_INF("DHCP server already running");
-		dhcp_server_started = true;
-		return 0;
-	} else if (ret < 0) {
-		LOG_ERR("Failed to start DHCP server: %d", ret);
-		return ret;
-	}
-
-	dhcp_server_started = true;
-	LOG_INF("DHCP server started with pool starting at 192.168.1.2");
-	return 0;
-}
-
-static int setup_softap_mode(void)
-{
-	int ret;
-
-	LOG_INF("Setting up SoftAP mode");
-
-	/* Set regulatory domain */
-	ret = wifi_set_reg_domain();
-	if (ret) {
-		LOG_ERR("Failed to set regulatory domain: %d", ret);
-		return ret;
-	}
-
-	/* Setup DHCP server */
-	ret = setup_dhcp_server();
-	if (ret) {
-		LOG_ERR("Failed to setup DHCP server: %d", ret);
-		return ret;
-	}
-
-	/* Setup SoftAP */
-	ret = wifi_setup_softap(CONFIG_UDP_RX_DEV_MODE_SOFTAP_SSID,
-				CONFIG_UDP_RX_DEV_MODE_SOFTAP_PSK);
-	if (ret) {
-		LOG_ERR("Failed to setup SoftAP: %d", ret);
-		return ret;
-	}
-
-	return 0;
-}
-#endif /* CONFIG_UDP_RX_DEV_MODE_SOFTAP */
 
 #if IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_DEVICE_ROLE_TX) &&                                         \
 	IS_ENABLED(CONFIG_WIFI_LATENCY_TEST_PACKET_TYPE_RAW)
@@ -469,7 +397,7 @@ int main(void)
 	/* RX device in SoftAP mode */
 	LOG_INF("Device role: RX (SoftAP mode)");
 
-	ret = setup_softap_mode();
+	ret = wifi_run_softap_mode();
 	if (ret) {
 		LOG_ERR("Failed to setup SoftAP mode: %d", ret);
 		return ret;
@@ -479,8 +407,8 @@ int main(void)
 	wifi_print_status();
 
 	LOG_INF("SoftAP setup complete, waiting for station to connect...");
-	LOG_INF("SSID: %s", CONFIG_UDP_RX_DEV_MODE_SOFTAP_SSID);
-	LOG_INF("Password: %s", CONFIG_UDP_RX_DEV_MODE_SOFTAP_PSK);
+	LOG_INF("SSID: %s", CONFIG_SOFTAP_SSID);
+	LOG_INF("Password: %s", CONFIG_SOFTAP_PASSWORD);
 	LOG_INF("UDP server will start once a station connects");
 
 	/* Wait for a station to connect before starting UDP RX */

@@ -11,13 +11,11 @@
 #include <zephyr/net/net_mgmt.h>
 
 /**
- * @brief Set up SoftAP mode
+ * @brief Run SoftAP mode
  *
- * @param ssid SSID for the SoftAP
- * @param psk Password for the SoftAP
  * @return 0 on success, negative error code on failure
  */
-int wifi_setup_softap(const char *ssid, const char *psk);
+int wifi_run_softap_mode(void);
 
 /**
  * @brief Print detailed Wi-Fi status information

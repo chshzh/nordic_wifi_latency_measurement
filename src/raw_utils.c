@@ -18,7 +18,7 @@
 #include "raw_utils.h"
 #include "wifi_utils.h"
 #include "led_utils.h"
-#include "net_event_mgmt.h"
+#include "net_event_mgmt_utils.h"
 
 LOG_MODULE_REGISTER(raw_utils, CONFIG_LOG_DEFAULT_LEVEL);
 

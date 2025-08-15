@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-#ifndef NET_MGMT_H
-#define NET_MGMT_H
+#ifndef NET_EVENT_MGMT_UTILS_H
+#define NET_EVENT_MGMT_UTILS_H
 
 #include <zephyr/kernel.h>
 #include <zephyr/net/net_mgmt.h>
@@ -21,4 +21,13 @@
  */
 int init_network_events(void);
 
-#endif /* NET_MGMT_H */
+/* External semaphores for network events */
+extern struct k_sem iface_up_sem;
+extern struct k_sem wpa_supplicant_ready_sem;
+extern struct k_sem ipv4_dhcp_bond_sem;
+
+#if IS_ENABLED(CONFIG_WIFI_NM_WPA_SUPPLICANT_AP)
+extern struct k_sem station_connected_sem;
+#endif
+
+#endif /* NET_EVENT_MGMT_UTILS_H */

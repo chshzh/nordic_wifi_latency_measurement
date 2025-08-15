@@ -12,6 +12,7 @@
 #include <zephyr/net/net_ip.h>
 #include <zephyr/net/dhcpv4.h>
 #include <zephyr/net/dhcpv4_server.h>
+#include <zephyr/net/socket.h>
 #include <string.h>
 
 #include "wifi_utils.h"
@@ -96,7 +97,6 @@ int wifi_set_tx_injection_mode(void)
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_UDP_RX_DEV_MODE_SOFTAP) || IS_ENABLED(CONFIG_RAW_RX_DEV_MODE_MONITOR)
 int wifi_set_reg_domain(void)
 {
 	struct net_if *iface;
@@ -110,22 +110,29 @@ int wifi_set_reg_domain(void)
 	}
 
 	regd.oper = WIFI_MGMT_SET;
-	strncpy(regd.country_code, CONFIG_WIFI_LATENCY_TEST_REG_DOMAIN,
-		(WIFI_COUNTRY_CODE_LEN + 1));
+#ifdef CONFIG_SOFTAP_REG_DOMAIN
+	strncpy(regd.country_code, CONFIG_SOFTAP_REG_DOMAIN, (WIFI_COUNTRY_CODE_LEN + 1));
+#else
+	strncpy(regd.country_code, "US", (WIFI_COUNTRY_CODE_LEN + 1));
+#endif
 
 	ret = net_mgmt(NET_REQUEST_WIFI_REG_DOMAIN, iface, &regd, sizeof(regd));
 	if (ret) {
 		LOG_ERR("Cannot %s Regulatory domain: %d", "SET", ret);
 	} else {
-		LOG_INF("Regulatory domain set to %s", CONFIG_WIFI_LATENCY_TEST_REG_DOMAIN);
+#ifdef CONFIG_SOFTAP_REG_DOMAIN
+		LOG_INF("Regulatory domain set to %s", CONFIG_SOFTAP_REG_DOMAIN);
+#else
+		LOG_INF("Regulatory domain set to US");
+#endif
 	}
 
 	return ret;
 }
-#endif /* CONFIG_UDP_RX_DEV_MODE_SOFTAP || CONFIG_RAW_RX_DEV_MODE_MONITOR */
 
-#if IS_ENABLED(CONFIG_UDP_RX_DEV_MODE_SOFTAP)
-int wifi_setup_softap(const char *ssid, const char *psk)
+#if IS_ENABLED(CONFIG_WIFI_NM_WPA_SUPPLICANT_AP)
+
+static int wifi_set_softap(const char *ssid, const char *psk)
 {
 	struct net_if *iface;
 	struct wifi_connect_req_params params = {0};
@@ -162,7 +169,78 @@ int wifi_setup_softap(const char *ssid, const char *psk)
 
 	return 0;
 }
-#endif /* CONFIG_UDP_RX_DEV_MODE_SOFTAP */
+
+static bool dhcp_server_started;
+static int setup_dhcp_server(void)
+{
+	struct net_if *iface;
+	struct in_addr pool_start;
+	int ret;
+
+	if (dhcp_server_started) {
+		LOG_WRN("DHCP server already started");
+		return 0;
+	}
+
+	iface = net_if_get_first_wifi();
+	if (!iface) {
+		LOG_ERR("Failed to get Wi-Fi interface");
+		return -1;
+	}
+
+	/* Set DHCP pool start address */
+	ret = inet_pton(AF_INET, "192.168.1.2", &pool_start);
+	if (ret != 1) {
+		LOG_ERR("Invalid DHCP pool start address");
+		return -1;
+	}
+
+	ret = net_dhcpv4_server_start(iface, &pool_start);
+	if (ret == -EALREADY) {
+		LOG_INF("DHCP server already running");
+		dhcp_server_started = true;
+		return 0;
+	} else if (ret < 0) {
+		LOG_ERR("Failed to start DHCP server: %d", ret);
+		return ret;
+	}
+
+	dhcp_server_started = true;
+	LOG_INF("DHCP server started with pool starting at 192.168.1.2");
+	return 0;
+}
+
+int wifi_run_softap_mode(void)
+{
+	int ret;
+
+	LOG_INF("Setting up SoftAP mode");
+
+	/* Set regulatory domain */
+	ret = wifi_set_reg_domain();
+	if (ret) {
+		LOG_ERR("Failed to set regulatory domain: %d", ret);
+		return ret;
+	}
+
+	/* Setup DHCP server */
+	ret = setup_dhcp_server();
+	if (ret) {
+		LOG_ERR("Failed to setup DHCP server: %d", ret);
+		return ret;
+	}
+
+	/* Setup SoftAP */
+	ret = wifi_set_softap(CONFIG_SOFTAP_SSID, CONFIG_SOFTAP_PASSWORD);
+	if (ret) {
+		LOG_ERR("Failed to setup SoftAP: %d", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+#endif /* CONFIG_WIFI_NM_WPA_SUPPLICANT_AP */
 
 int wifi_print_status(void)
 {

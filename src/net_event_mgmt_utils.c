@@ -6,13 +6,15 @@
 
 #include <zephyr/logging/log.h>
 #include <zephyr/net/net_if.h>
+#include <zephyr/net/dhcpv4_server.h>
 #include <supp_events.h>
 #include <zephyr/net/socket.h>
+#include <stdio.h>
 
-#include "net_event_mgmt.h"
+#include "net_event_mgmt_utils.h"
 #include "wifi_utils.h"
 
-LOG_MODULE_REGISTER(net_event_mgmt, CONFIG_LOG_DEFAULT_LEVEL);
+LOG_MODULE_REGISTER(net_event_mgmt_utils, CONFIG_LOG_DEFAULT_LEVEL);
 
 /* Event masks for different network layers */
 #define L2_IF_EVENT_MASK        (NET_EVENT_IF_DOWN | NET_EVENT_IF_UP)
@@ -34,11 +36,10 @@ static struct net_mgmt_event_callback iface_event_cb;
 static struct net_mgmt_event_callback wpa_event_cb;
 static struct net_mgmt_event_callback wifi_event_cb;
 static struct net_mgmt_event_callback ipv4_event_cb;
-#if IS_ENABLED(CONFIG_UDP_RX_DEV_MODE_SOFTAP)
+#if IS_ENABLED(CONFIG_WIFI_NM_WPA_SUPPLICANT_AP)
 static struct net_mgmt_event_callback softap_event_cb;
 
 /* SoftAP support */
-bool dhcp_server_started = false;
 static K_MUTEX_DEFINE(softap_mutex);
 K_SEM_DEFINE(station_connected_sem, 0, 1); /* Semaphore to wait for station connection */
 
@@ -50,7 +51,7 @@ struct softap_station {
 
 #define MAX_SOFTAP_STATIONS 4
 static struct softap_station connected_stations[MAX_SOFTAP_STATIONS];
-#endif /* CONFIG_UDP_RX_DEV_MODE_SOFTAP */
+#endif /* CONFIG_WIFI_NM_WPA_SUPPLICANT_AP */
 
 static void l2_iface_event_handler(struct net_mgmt_event_callback *cb, uint32_t mgmt_event,
 				   struct net_if *iface)
@@ -81,7 +82,7 @@ static void l2_iface_event_handler(struct net_mgmt_event_callback *cb, uint32_t 
 	}
 }
 
-#if IS_ENABLED(CONFIG_UDP_RX_DEV_MODE_SOFTAP)
+#if IS_ENABLED(CONFIG_WIFI_NM_WPA_SUPPLICANT_AP)
 
 static int get_station_ip_address(const uint8_t *mac, struct in_addr *ip_addr)
 {
@@ -173,7 +174,7 @@ static void handle_station_connected(struct net_mgmt_event_callback *cb)
 
 	/* Signal that a station has connected - this will allow UDP RX task to start */
 	k_sem_give(&station_connected_sem);
-	LOG_INF("First station connected - UDP RX task can now start");
+	LOG_INF("New device connected with AP!");
 }
 
 static void handle_station_disconnected(struct net_mgmt_event_callback *cb)
@@ -244,7 +245,7 @@ static void l2_wifi_softap_event_handler(struct net_mgmt_event_callback *cb, uin
 		break;
 	}
 }
-#endif /* CONFIG_UDP_RX_DEV_MODE_SOFTAP */
+#endif /* CONFIG_WIFI_NM_WPA_SUPPLICANT_AP */
 
 /* Enhanced WiFi management event handler for L2 events */
 static void l2_wifi_conn_event_handler(struct net_mgmt_event_callback *cb, uint32_t mgmt_event,
@@ -256,7 +257,7 @@ static void l2_wifi_conn_event_handler(struct net_mgmt_event_callback *cb, uint3
 
 		if (status->status == 0) {
 			/* Connection successful */
-			LOG_INF("WiFi L2 connection successful");
+			LOG_INF("WiFi is connected!");
 			/* Print detailed WiFi status when connected */
 			wifi_print_status();
 		} else {
@@ -301,7 +302,7 @@ static void l3_wpa_supp_event_handler(struct net_mgmt_event_callback *cb, uint32
 {
 	switch (mgmt_event) {
 	case NET_EVENT_SUPPLICANT_READY:
-		LOG_INF("WPA Supplicant is ready");
+		LOG_INF("WPA Supplicant is ready!");
 		k_sem_give(&wpa_supplicant_ready_sem);
 		break;
 	case NET_EVENT_SUPPLICANT_NOT_READY:
@@ -323,7 +324,7 @@ static void l3_ipv4_event_handler(struct net_mgmt_event_callback *cb, uint32_t m
 
 	switch (mgmt_event) {
 	case NET_EVENT_IPV4_DHCP_BOUND:
-		LOG_INF("Network DHCP bound - L3 connectivity established");
+		LOG_INF("Network DHCP bound!");
 		/* Print IP address information */
 		wifi_print_dhcp_ip(cb);
 		/* Signal network connectivity */
@@ -344,25 +345,25 @@ int init_network_events(void)
 	net_mgmt_add_event_callback(&iface_event_cb);
 	LOG_DBG("Network interface event handler registered");
 
-	/* Initialize and add the callback function for WPA Supplicant events */
-	net_mgmt_init_event_callback(&wpa_event_cb, l3_wpa_supp_event_handler,
-				     L3_WPA_SUPP_EVENT_MASK);
-	net_mgmt_add_event_callback(&wpa_event_cb);
-	LOG_DBG("WPA Supplicant event handler registered");
-
 	/* Initialize and add the callback function for WiFi events (L2) */
 	net_mgmt_init_event_callback(&wifi_event_cb, l2_wifi_conn_event_handler,
 				     L2_WIFI_CONN_EVENT_MASK);
 	net_mgmt_add_event_callback(&wifi_event_cb);
 	LOG_DBG("WiFi L2 event handler registered");
 
-#if IS_ENABLED(CONFIG_UDP_RX_DEV_MODE_SOFTAP)
+#if IS_ENABLED(CONFIG_WIFI_NM_WPA_SUPPLICANT_AP)
 	/* Initialize SoftAP event callbacks */
 	net_mgmt_init_event_callback(&softap_event_cb, l2_wifi_softap_event_handler,
 				     L2_WIFI_SOFTAP_EVENT_MASK);
 	net_mgmt_add_event_callback(&softap_event_cb);
 	LOG_DBG("SoftAP event handler registered");
-#endif /* CONFIG_UDP_RX_DEV_MODE_SOFTAP */
+#endif /* CONFIG_WIFI_NM_WPA_SUPPLICANT_AP */
+
+	/* Initialize and add the callback function for WPA Supplicant events */
+	net_mgmt_init_event_callback(&wpa_event_cb, l3_wpa_supp_event_handler,
+				     L3_WPA_SUPP_EVENT_MASK);
+	net_mgmt_add_event_callback(&wpa_event_cb);
+	LOG_DBG("WPA Supplicant event handler registered");
 
 	/* Initialize and add the callback function for network events (L3) */
 	net_mgmt_init_event_callback(&ipv4_event_cb, l3_ipv4_event_handler, L3_IPV4_EVENT_MASK);

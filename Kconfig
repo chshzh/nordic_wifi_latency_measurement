@@ -108,13 +108,13 @@ config UDP_RX_DEV_MODE_SOFTAP
 endchoice
 
 if UDP_RX_DEV_MODE_SOFTAP
-config UDP_RX_DEV_MODE_SOFTAP_SSID
+config SOFTAP_SSID
 	string "SoftAP SSID"
 	default "wifi-latency-test"
 	help
 	  SSID for the SoftAP when RX device acts as access point
 
-config UDP_RX_DEV_MODE_SOFTAP_PSK
+config SOFTAP_PASSWORD
 	string "SoftAP password"
 	default "testpass123"
 	help

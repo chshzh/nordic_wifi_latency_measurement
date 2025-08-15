@@ -16,5 +16,5 @@ target_sources(app PRIVATE
     src/udp_utils.c
     src/led_utils.c
     src/raw_utils.c
-    src/net_event_mgmt.c
+    src/net_event_mgmt_utils.c
 ) 
