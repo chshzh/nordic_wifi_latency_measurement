@@ -1,15 +1,16 @@
-# Wi-Fi Packet Latency Test Application
+# Nordic Wi-Fi Latency Measurement
 
+![Build Status](https://github.com/chshzh/nordic_wifi_latency_measurement/actions/workflows/build.yml/badge.svg)
 ![Nordic Semiconductor](https://img.shields.io/badge/Nordic%20Semiconductor-nRF7002-blue)
-![NCS Version](https://img.shields.io/badge/NCS-v3.0.2+-green)
+![NCS Version](https://img.shields.io/badge/NCS-v3.1.0-green)
 ![Platform](https://img.shields.io/badge/Platform-nRF7002%20DK-orange)
 ![License](https://img.shields.io/badge/License-LicenseRef--Nordic--5--Clause-lightgrey)
 
-> **High-precision Wi-Fi Raw IEEE 802.11 packet and UDP latency measurement tool for Nordic nRF7002 DK with external measurement equipment integration**
+> **High-precision Nordic Wi-Fi Raw IEEE 802.11 packet and UDP latency measurement tool for Nordic nRF7002 DK with external measurement equipment integration**
 
 ## 🔍 Overview
 
-This application provides comprehensive Wi-Fi latency measurement capabilities using both UDP socket communication and Raw IEEE 802.11 packet transmission. It features GPIO-synchronized LED indicators that enable precision timing measurements with external equipment such as oscilloscopes or Nordic's PPK2 (Power Profiler Kit II).
+This Nordic Wi-Fi latency measurement application provides comprehensive Wi-Fi latency measurement capabilities using both UDP socket communication and Raw IEEE 802.11 packet transmission. It features GPIO-synchronized LED indicators that enable precision timing measurements with external equipment such as oscilloscopes or Nordic's PPK2 (Power Profiler Kit II).
 
 The application supports multiple network topologies and transmission modes, making it ideal for analyzing Wi-Fi performance characteristics across different scenarios.
 
@@ -68,10 +69,10 @@ The application supports four distinct test scenarios, each optimized for differ
 
 | Component | Specification | Notes |
 |-----------|---------------|-------|
-| **Main Board** | nRF7002 DK | Primary development board |
-| **NCS Version** | v3.0.2  | Nordic Connect SDK |
+| **Main Board** | nRF7002 DK x2 | Primary development board |
+| **NCS Version** | v3.1.0  | Nordic Connect SDK |
 | **Measurement Equipment** | PPK2 or Oscilloscope | For precision timing analysis |
-| **USB Cable** | USB-C | For programming and serial communication |
+| **USB Cable** | Micro USB x2 | For programming and serial communication |
 
 ### 📍 GPIO Pin Configuration (nRF7002 DK)
 
@@ -124,9 +125,8 @@ wifi_latency_test/
 ### 1. Prerequisites
 
 Ensure you have the Nordic Connect SDK environment properly configured:
-- [Nordic Connect SDK v3.0.2](https://docs.nordicsemi.com/bundle/ncs-3.0.2/page/nrf/installation/install_ncs.html)
-- West build tool
-- nRF7002 DK hardware
+- [Nordic Connect SDK v3.1.0](https://docs.nordicsemi.com/bundle/ncs-3.1.0/page/nrf/installation/install_ncs.html)
+- nRF7002 DK x2
 - Compatible measurement equipment (PPK2 or oscilloscope)
 
 ### 2. Project Setup
@@ -134,7 +134,7 @@ Ensure you have the Nordic Connect SDK environment properly configured:
 Navigate to your NCS workspace and clone/copy the project:
 
 ```bash
-cd /opt/nordic/ncs/v3.0.2  # Adjust to your NCS installation path
+cd /opt/nordic/ncs/v3.1.0  # Adjust to your NCS installation path
 # Project should be available in wifi_latency_test/ directory
 cd wifi_latency_test
 ```
@@ -211,14 +211,14 @@ CONFIG_UDP_TX_DEV_TARGET_IP="192.168.1.100"  # IP address of RX device
 #### Test 3: SoftAP Mode
 **RX Device** (`overlay-udp-rx-softap.conf`) - Creates access point:
 ```properties
-CONFIG_SOFTAP_SSID="wifi-latency-test"
-CONFIG_SOFTAP_PASSWORD="testpass123"
+CONFIG_SOFTAP_SSID="wifi-latency-meas"
+CONFIG_SOFTAP_PASSWORD="nordicnrf7x"
 ```
 
 **TX Device** (`overlay-udp-tx-sta.conf`) - Connects to SoftAP:
 ```properties
-CONFIG_WIFI_CREDENTIALS_STATIC_SSID="wifi-latency-test"
-CONFIG_WIFI_CREDENTIALS_STATIC_PASSWORD="testpass123"
+CONFIG_WIFI_CREDENTIALS_STATIC_SSID="wifi-latency-meas"
+CONFIG_WIFI_CREDENTIALS_STATIC_PASSWORD="nordicnrf7x"
 CONFIG_UDP_TX_DEV_TARGET_IP="192.168.1.1"  # SoftAP IP address (fixed)
 ```
 
@@ -435,7 +435,7 @@ Network topology: TX Device → External AP → RX Device (Different AP)
 
 ## 📖 Documentation
 
-### [Wi-Fi Raw and UDP Packet Latency Comparison](wifi_raw_and_udp_packets_latency_comparison.md)
+### [Nordic Wi-Fi Raw and UDP Packet Latency Comparison](wifi_raw_and_udp_packets_latency_comparison.md)
 
 Comprehensive technical analysis covering:
 - **Protocol Stack Comparison**: Detailed breakdown of UDP vs Raw packet transmission paths
@@ -444,11 +444,10 @@ Comprehensive technical analysis covering:
 - **Architecture Guidance**: When to choose Raw vs UDP approaches for specific use cases
 - **Implementation Details**: Code examples and configuration recommendations
 
-This companion document provides theoretical foundation and practical guidance for optimizing Wi-Fi latency measurements based on your specific requirements.
+This companion document provides theoretical foundation and practical guidance for optimizing Nordic Wi-Fi latency measurements based on your specific requirements.
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/chshzh/wifi_latency_test/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/chshzh/wifi_latency_test/discussions)
+- **Issues**: [GitHub Issues](https://github.com/chshzh/nordic_wifi_latency_measurement/issues)
 - **Nordic DevZone**: [devzone.nordicsemi.com](https://devzone.nordicsemi.com/)
 - **Documentation**: [nRF Connect SDK Documentation](https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/index.html)
 
